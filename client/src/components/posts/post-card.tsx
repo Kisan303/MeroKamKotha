@@ -10,11 +10,14 @@ import { format } from "date-fns";
 import { Heart, MessageSquare, Trash, Edit } from "lucide-react";
 import type { Post, Comment } from "@shared/schema";
 
-export function PostCard({ post }: { post: Post }) {
+type PostWithUsername = Post & { username?: string };
+type CommentWithUsername = Comment & { username?: string };
+
+export function PostCard({ post }: { post: PostWithUsername }) {
   const { user } = useAuth();
   const [comment, setComment] = useState("");
 
-  const { data: comments = [] } = useQuery<Comment[]>({
+  const { data: comments = [] } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
   });
 
@@ -22,7 +25,7 @@ export function PostCard({ post }: { post: Post }) {
     queryKey: ["/api/posts", post.id, "likes"],
   });
 
-  const isLiked = likes.some((like) => like.userId === user.id);
+  const isLiked = user ? likes.some((like) => like.userId === user.id) : false;
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -58,10 +61,10 @@ export function PostCard({ post }: { post: Post }) {
         <div>
           <h3 className="font-semibold">{post.title}</h3>
           <p className="text-sm text-muted-foreground">
-            Posted by {post.username} on {format(new Date(post.createdAt), "PP")}
+            Posted by {post.username || "Unknown"} on {format(new Date(post.createdAt), "PP")}
           </p>
         </div>
-        {user.id === post.userId && (
+        {user && user.id === post.userId && (
           <div className="flex gap-2">
             <Button variant="ghost" size="icon">
               <Edit className="h-4 w-4" />
@@ -74,7 +77,7 @@ export function PostCard({ post }: { post: Post }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <p>{post.description}</p>
-        {post.type === "room" && post.images?.length > 0 && (
+        {post.type === "room" && post.images && post.images.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
             {post.images.map((image, i) => (
               <img key={i} src={image} alt={`Room ${i + 1}`} className="rounded-md object-cover aspect-video" />
@@ -93,11 +96,12 @@ export function PostCard({ post }: { post: Post }) {
             size="sm"
             className="flex gap-2"
             onClick={() => likeMutation.mutate()}
+            disabled={!user}
           >
             <Heart className={`h-4 w-4 ${isLiked ? "fill-primary" : ""}`} />
             {likes.length}
           </Button>
-          <Button variant="ghost" size="sm" className="flex gap-2">
+          <Button variant="ghost" size="sm" className="flex gap-2" disabled={!user}>
             <MessageSquare className="h-4 w-4" />
             {comments.length}
           </Button>
@@ -105,20 +109,23 @@ export function PostCard({ post }: { post: Post }) {
         <ScrollArea className="h-24 w-full">
           {comments.map((comment) => (
             <div key={comment.id} className="py-2">
-              <p className="text-sm">{comment.content}</p>
+              <p className="text-sm font-medium">{comment.username || "Unknown"}</p>
+              <p className="text-sm text-muted-foreground">{comment.content}</p>
             </div>
           ))}
         </ScrollArea>
-        <div className="flex gap-2 w-full">
-          <Input
-            placeholder="Add a comment..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
-          <Button onClick={() => commentMutation.mutate()} disabled={!comment.trim()}>
-            Comment
-          </Button>
-        </div>
+        {user && (
+          <div className="flex gap-2 w-full">
+            <Input
+              placeholder="Add a comment..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
+            <Button onClick={() => commentMutation.mutate()} disabled={!comment.trim()}>
+              Comment
+            </Button>
+          </div>
+        )}
       </CardFooter>
     </Card>
   );

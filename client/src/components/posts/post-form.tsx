@@ -26,8 +26,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DialogTitle } from "@/components/ui/dialog"; // Added import
 
-export function PostForm({ post, onSuccess }: { 
+
+export function PostForm({ post, onSuccess }: {
   post?: InsertPost & { id?: number };
   onSuccess?: () => void;
 }) {
@@ -41,7 +43,7 @@ export function PostForm({ post, onSuccess }: {
       type: "room",
       title: "",
       description: "",
-      price: undefined,
+      price: null,
       location: "",
       images: [],
     },
@@ -133,157 +135,166 @@ export function PostForm({ post, onSuccess }: {
   const postType = form.watch("type");
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Post Type</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
+    <>
+      <DialogTitle className="text-xl font-semibold mb-4">
+        {post?.id ? "Edit Post" : "Create New Post"}
+      </DialogTitle>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Post Type</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select post type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="room">Room</SelectItem>
+                    <SelectItem value="job">Job</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Title</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select post type" />
-                  </SelectTrigger>
+                  <Input placeholder="Enter title" {...field} />
                 </FormControl>
-                <SelectContent>
-                  <SelectItem value="room">Room</SelectItem>
-                  <SelectItem value="job">Job</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter title" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Enter description"
+                    className="resize-none"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Enter description"
-                  className="resize-none"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="price"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Price (Optional)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="Enter price"
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      field.onChange(value ? Number(value) : null);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="price"
-          render={({ field }) => (
+          <FormField
+            control={form.control}
+            name="location"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Location</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter location" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {postType === "room" && (
             <FormItem>
-              <FormLabel>Price (Optional)</FormLabel>
+              <FormLabel>Images (Optional)</FormLabel>
               <FormControl>
                 <Input
-                  type="number"
-                  placeholder="Enter price"
-                  {...field}
-                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  className="cursor-pointer"
                 />
               </FormControl>
-              <FormMessage />
+              <FormDescription>
+                You can upload up to 5 images. Each image must be less than 5MB.
+              </FormDescription>
+              {previews.length > 0 && (
+                <Card className="p-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    {previews.map((preview, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="rounded-md object-cover aspect-video"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6"
+                          onClick={() => {
+                            setPreviews(previews.filter((_, i) => i !== index));
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = "";
+                            }
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
             </FormItem>
           )}
-        />
 
-        <FormField
-          control={form.control}
-          name="location"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Location</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter location" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {postType === "room" && (
-          <FormItem>
-            <FormLabel>Images (Optional)</FormLabel>
-            <FormControl>
-              <Input
-                type="file"
-                accept="image/*"
-                multiple
-                ref={fileInputRef}
-                onChange={handleImageChange}
-                className="cursor-pointer"
-              />
-            </FormControl>
-            <FormDescription>
-              You can upload up to 5 images. Each image must be less than 5MB.
-            </FormDescription>
-            {previews.length > 0 && (
-              <Card className="p-4">
-                <div className="grid grid-cols-2 gap-2">
-                  {previews.map((preview, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="rounded-md object-cover aspect-video"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-1 right-1 h-6 w-6"
-                        onClick={() => {
-                          setPreviews(previews.filter((_, i) => i !== index));
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                          }
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </Card>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={createMutation.isPending || updateMutation.isPending}
+          >
+            {(createMutation.isPending || updateMutation.isPending) && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-          </FormItem>
-        )}
-
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={createMutation.isPending || updateMutation.isPending}
-        >
-          {(createMutation.isPending || updateMutation.isPending) && (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          )}
-          {post?.id ? "Update" : "Create"} Post
-        </Button>
-      </form>
-    </Form>
+            {post?.id ? "Update" : "Create"} Post
+          </Button>
+        </form>
+      </Form>
+    </>
   );
 }

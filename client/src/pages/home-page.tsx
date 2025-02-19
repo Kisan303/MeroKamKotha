@@ -11,22 +11,26 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import type { Post } from "@shared/schema";
 
+type PostWithUsername = Post & { username?: string };
+
 export default function HomePage() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [postType, setPostType] = useState<"all" | "room" | "job">("all");
 
-  const { data: posts = [] } = useQuery<Post[]>({
+  const { data: posts = [] } = useQuery<PostWithUsername[]>({
     queryKey: ["/api/posts"],
   });
 
   const filteredPosts = posts.filter((post) => {
     const matchesSearch = post.title.toLowerCase().includes(search.toLowerCase()) ||
-                         post.description.toLowerCase().includes(search.toLowerCase()) ||
-                         post.location.toLowerCase().includes(search.toLowerCase());
+                       post.description.toLowerCase().includes(search.toLowerCase()) ||
+                       post.location.toLowerCase().includes(search.toLowerCase());
     const matchesType = postType === "all" || post.type === postType;
     return matchesSearch && matchesType;
   });
+
+  if (!user) return null;
 
   return (
     <Layout>
