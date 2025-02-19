@@ -175,8 +175,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                     <div className="flex items-center gap-2">
                       <UserCircle className="h-4 w-4 text-muted-foreground" />
                       <p className="text-sm font-medium">{comment.username || "Unknown"}</p>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
+                      <span className="text-xs text-muted-foreground">
                         {format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a")}
                       </span>
                     </div>
@@ -193,13 +192,19 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   className="flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && comment.trim()) {
+                      e.preventDefault();
+                      commentMutation.mutate();
+                    }
+                  }}
                 />
                 <Button 
                   onClick={() => commentMutation.mutate()} 
                   disabled={!comment.trim() || commentMutation.isPending}
                   className="whitespace-nowrap"
                 >
-                  Post Comment
+                  {commentMutation.isPending ? 'Posting...' : 'Post Comment'}
                 </Button>
               </div>
             )}
