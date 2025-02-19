@@ -85,19 +85,6 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("DELETE", `/api/posts/${post.id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      toast({
-        title: "Success",
-        description: "Post deleted successfully",
-      });
-    },
-  });
-
   // Filter out invalid comments
   const validComments = comments.filter(comment => comment.content && comment.content.trim());
 
@@ -178,10 +165,10 @@ export function PostCard({ post }: { post: PostWithUsername }) {
           >
             <Heart 
               className={`h-4 w-4 transition-colors ${
-                isLiked ? "fill-primary text-primary" : ""
+                isLiked ? "fill-primary text-primary animate-scale" : ""
               }`} 
             />
-            {likesLoading ? "..." : likes.length}
+            {likesLoading ? "..." : likes.length || 0}
           </Button>
           <Button 
             variant="ghost" 
