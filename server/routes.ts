@@ -108,10 +108,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Comments
   app.get("/api/posts/:id/comments", async (req, res) => {
     try {
-      console.log(`[GET /api/posts/${req.params.id}/comments] Fetching comments...`);
-      const comments = await storage.getComments(Number(req.params.id));
-      console.log(`[GET /api/posts/${req.params.id}/comments] Found ${comments.length} comments`);
+      const postId = Number(req.params.id);
+      console.log(`[GET /api/posts/${postId}/comments] Start fetching comments`);
 
+      // Get comments from storage
+      const comments = await storage.getComments(postId);
+      console.log(`[GET /api/posts/${postId}/comments] Retrieved ${comments.length} comments from storage`);
+
+      // Get usernames for each comment
+      console.log(`[GET /api/posts/${postId}/comments] Fetching usernames for comments`);
       const commentsWithUsernames = await Promise.all(
         comments.map(async (comment) => {
           const user = await storage.getUser(comment.userId);
@@ -119,7 +124,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
-      console.log(`[GET /api/posts/${req.params.id}/comments] Sending response with ${commentsWithUsernames.length} comments`);
+      console.log(`[GET /api/posts/${postId}/comments] Sending ${commentsWithUsernames.length} comments with usernames`);
+      console.log('Comments data:', commentsWithUsernames);
+
       res.json(commentsWithUsernames);
     } catch (error) {
       console.error('[GET /api/posts/:id/comments] Error:', error);

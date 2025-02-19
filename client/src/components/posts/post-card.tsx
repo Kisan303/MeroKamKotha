@@ -33,6 +33,16 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   // Query for comments with proper error handling
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
+    queryFn: async () => {
+      console.log(`Fetching comments for post ${post.id}`);
+      const response = await fetch(`/api/posts/${post.id}/comments`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
+      }
+      const data = await response.json();
+      console.log(`Received ${data.length} comments for post ${post.id}`, data);
+      return data;
+    },
     enabled: true, // Always fetch comments
     refetchOnMount: true, // Refetch when component mounts
     staleTime: 1000 * 60, // Consider data fresh for 1 minute
