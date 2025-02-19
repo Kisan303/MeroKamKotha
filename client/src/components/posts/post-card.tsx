@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { Heart, MessageSquare, Trash, Edit, Clock, UserCircle, Check, X } from "lucide-react";
+import { Heart, MessageSquare, Trash, Edit, Clock, UserCircle, Check, X, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -341,30 +347,34 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                         </span>
                       </div>
                       {user && comment.userId === user.id && (
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => {
-                              setEditingCommentId(comment.id);
-                              setEditContent(comment.content);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => {
-                              if (window.confirm('Are you sure you want to delete this comment?')) {
-                                deleteCommentMutation.mutate(comment.id);
-                              }
-                            }}
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
+                        <div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                setEditingCommentId(comment.id);
+                                setEditContent(comment.content);
+                              }}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (window.confirm('Are you sure you want to delete this comment?')) {
+                                    deleteCommentMutation.mutate(comment.id);
+                                  }
+                                }}
+                                className="text-destructive"
+                              >
+                                <Trash className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       )}
                     </div>
