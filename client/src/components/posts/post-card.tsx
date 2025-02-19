@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { Heart, MessageSquare, Trash, Edit } from "lucide-react";
+import { Heart, MessageSquare, Trash, Edit, Clock, UserCircle } from "lucide-react";
 import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 
@@ -19,12 +19,12 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
 
-  const { data: comments = [] } = useQuery<CommentWithUsername[]>({
+  const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     enabled: showComments, // Only fetch comments when comments section is shown
   });
 
-  const { data: likes = [] } = useQuery<{ id: number; userId: number }[]>({
+  const { data: likes = [], isLoading: likesLoading } = useQuery<{ id: number; userId: number }[]>({
     queryKey: ["/api/posts", post.id, "likes"],
   });
 
@@ -63,17 +63,21 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="space-y-1.5">
-            <p className="text-sm text-muted-foreground">
-              Posted by {post.username || "Unknown"}
-            </p>
+            <div className="flex items-center gap-2">
+              <UserCircle className="h-5 w-5 text-muted-foreground" />
+              <p className="text-sm font-medium">
+                {post.username || "Unknown"}
+              </p>
+            </div>
             <h2 className="text-2xl font-bold leading-none tracking-tight">
               {post.title}
             </h2>
           </div>
-          <div className="flex items-start gap-2">
-            <p className="text-sm text-muted-foreground whitespace-nowrap">
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
               {format(new Date(post.createdAt), "PPp")}
-            </p>
+            </div>
             {user && user.id === post.userId && (
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon">
@@ -127,14 +131,14 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             size="sm"
             className="flex gap-2"
             onClick={() => likeMutation.mutate()}
-            disabled={!user}
+            disabled={!user || likeMutation.isPending}
           >
             <Heart 
               className={`h-4 w-4 transition-colors ${
                 isLiked ? "fill-primary text-primary" : ""
               }`} 
             />
-            {likes.length}
+            {likesLoading ? "..." : likes.length}
           </Button>
           <Button 
             variant="ghost" 
@@ -144,7 +148,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             onClick={() => setShowComments(!showComments)}
           >
             <MessageSquare className="h-4 w-4" />
-            {comments.length}
+            {commentsLoading ? "..." : comments.length}
           </Button>
         </div>
 
@@ -152,14 +156,16 @@ export function PostCard({ post }: { post: PostWithUsername }) {
           <>
             <ScrollArea className="h-48 w-full rounded-md border p-4">
               {comments.map((comment) => (
-                <div key={comment.id} className="mb-4 last:mb-0">
+                <div key={comment.id} className="mb-4 last:mb-0 hover:bg-muted/50 rounded-lg p-2 transition-colors">
                   <div className="flex items-center gap-2">
+                    <UserCircle className="h-4 w-4 text-muted-foreground" />
                     <p className="text-sm font-medium">{comment.username || "Unknown"}</p>
-                    <span className="text-xs text-muted-foreground">
-                      {format(new Date(comment.createdAt), "PP")}
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a")}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{comment.content}</p>
+                  <p className="text-sm mt-1 pl-6">{comment.content}</p>
                 </div>
               ))}
               {comments.length === 0 && (
@@ -172,15 +178,17 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             {user && (
               <div className="flex gap-2 w-full">
                 <Input
-                  placeholder="Add a comment..."
+                  placeholder="Write a comment..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
+                  className="flex-1"
                 />
                 <Button 
                   onClick={() => commentMutation.mutate()} 
                   disabled={!comment.trim() || commentMutation.isPending}
+                  className="whitespace-nowrap"
                 >
-                  Post
+                  Post Comment
                 </Button>
               </div>
             )}
