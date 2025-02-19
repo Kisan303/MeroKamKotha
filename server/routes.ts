@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { Server as SocketIOServer } from "socket.io";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
@@ -12,6 +13,34 @@ const upload = multer({
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
+
+  // Create HTTP server
+  const httpServer = createServer(app);
+
+  // Create Socket.IO server
+  const io = new SocketIOServer(httpServer, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
+    }
+  });
+
+  // Socket.IO connection handling
+  io.on("connection", (socket) => {
+    console.log("Client connected");
+
+    socket.on("join-post", (postId: string) => {
+      socket.join(`post-${postId}`);
+    });
+
+    socket.on("leave-post", (postId: string) => {
+      socket.leave(`post-${postId}`);
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Client disconnected");
+    });
+  });
 
   // Middleware to check authentication
   const requireAuth = (req: any, res: any, next: any) => {
@@ -81,7 +110,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const parsed = insertCommentSchema.parse(req.body);
     const comment = await storage.createComment(req.user!.id, parsed);
     const user = await storage.getUser(comment.userId);
-    res.json({ ...comment, username: user?.username });
+    const commentWithUser = { ...comment, username: user?.username };
+
+    // Emit new comment to all clients viewing this post
+    io.to(`post-${comment.postId}`).emit("new-comment", commentWithUser);
+
+    res.json(commentWithUser);
   });
 
   app.get("/api/posts/:id/comments", async (req, res) => {
@@ -100,7 +134,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const liked = await storage.toggleLike(req.user!.id, Number(req.params.id));
       const likes = await storage.getLikes(Number(req.params.id));
-      res.json({ liked, count: likes.length });
+      const response = { liked, count: likes.length };
+
+      // Emit updated likes to all clients viewing this post
+      io.to(`post-${req.params.id}`).emit("likes-updated", response);
+
+      res.json(response);
     } catch (error) {
       res.status(500).json({ error: "Failed to toggle like" });
     }
@@ -115,6 +154,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
   return httpServer;
 }

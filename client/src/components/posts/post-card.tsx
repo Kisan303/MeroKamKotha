@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -11,6 +11,7 @@ import { Heart, MessageSquare, Trash, Edit, Clock, UserCircle } from "lucide-rea
 import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { socket } from "@/lib/socket";
 
 type LikeResponse = { likes: { id: number; userId: number }[]; count: number };
 type PostWithUsername = Post & { username?: string };
@@ -25,13 +26,45 @@ export function PostCard({ post }: { post: PostWithUsername }) {
 
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    refetchInterval: 1000,
+    refetchInterval: false, // Disable polling since we'll use WebSocket
   });
 
   const { data: likesData, isLoading: likesLoading } = useQuery<LikeResponse>({
     queryKey: ["/api/posts", post.id, "likes"],
-    refetchInterval: 1000,
+    refetchInterval: false, // Disable polling since we'll use WebSocket
   });
+
+  // Setup WebSocket listeners
+  useEffect(() => {
+    // Join post room
+    socket.emit("join-post", post.id.toString());
+
+    // Listen for new comments
+    socket.on("new-comment", (newComment: CommentWithUsername) => {
+      if (newComment.postId === post.id) {
+        queryClient.setQueryData<CommentWithUsername[]>(
+          ["/api/posts", post.id, "comments"],
+          (old = []) => [...old, newComment]
+        );
+      }
+    });
+
+    // Listen for likes updates
+    socket.on("likes-updated", (data: LikeResponse) => {
+      queryClient.setQueryData(
+        ["/api/posts", post.id, "likes"],
+        data
+      );
+      setOptimisticLikeCount(data.count);
+    });
+
+    // Cleanup
+    return () => {
+      socket.emit("leave-post", post.id.toString());
+      socket.off("new-comment");
+      socket.off("likes-updated");
+    };
+  }, [post.id]);
 
   const likes = likesData?.likes ?? [];
   const likeCount = optimisticLikeCount ?? likesData?.count ?? 0;
@@ -50,10 +83,6 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       setOptimisticLikeCount(newCount);
 
       return { previousData };
-    },
-    onSuccess: (data: { liked: boolean; count: number }) => {
-      setOptimisticLikeCount(data.count);
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "likes"] });
     },
     onError: (err, _, context) => {
       if (context?.previousData) {
@@ -79,39 +108,14 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       });
       return await res.json();
     },
-    onMutate: async (newComment) => {
-      setShowComments(true);
-      await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "comments"] });
-      const previousComments = queryClient.getQueryData(["/api/posts", post.id, "comments"]);
-      const optimisticComment = {
-        id: Date.now(),
-        postId: post.id,
-        userId: user!.id,
-        content: comment,
-        createdAt: new Date().toISOString(),
-        username: user?.username,
-      };
-      queryClient.setQueryData(
-        ["/api/posts", post.id, "comments"],
-        (old: CommentWithUsername[] = []) => [...old, optimisticComment]
-      );
-      return { previousComments };
-    },
     onSuccess: () => {
       setComment("");
       toast({
         title: "Success",
         description: "Your comment has been posted successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "comments"] });
     },
-    onError: (error, variables, context) => {
-      if (context?.previousComments) {
-        queryClient.setQueryData(
-          ["/api/posts", post.id, "comments"],
-          context.previousComments
-        );
-      }
+    onError: (error) => {
       toast({
         title: "Error",
         description: error.message,
