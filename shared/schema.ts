@@ -25,6 +25,7 @@ export const comments = pgTable("comments", {
   id: serial("id").primaryKey(),
   postId: integer("post_id").notNull(),
   userId: integer("user_id").notNull(),
+  parentId: integer("parent_id"),  // New field for nested comments
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   editedAt: timestamp("edited_at"),

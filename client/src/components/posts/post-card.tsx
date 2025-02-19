@@ -28,6 +28,7 @@ import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { socket } from "@/lib/socket";
+import { CommentThread } from './comment-thread'; // Import from same directory
 
 type LikeResponse = { likes: { id: number; userId: number }[]; count: number };
 type PostWithUsername = Post & { username?: string };
@@ -37,11 +38,12 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [comment, setComment] = useState("");
-  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
-  const [editContent, setEditContent] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [optimisticLikeCount, setOptimisticLikeCount] = useState<number | null>(null);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
+
 
   const { data: likesData, isLoading: likesLoading } = useQuery<LikeResponse>({
     queryKey: ["/api/posts", post.id, "likes"],
@@ -215,8 +217,8 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     },
   });
 
-  const validComments = comments
-    .filter((comment) => comment.content && comment.content.trim());
+  // Organize comments into a tree structure
+  const topLevelComments = comments.filter(comment => !comment.parentId);
 
   return (
     <Card className="relative">
@@ -308,18 +310,18 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             onClick={() => setShowComments(!showComments)}
           >
             <MessageSquare className="h-4 w-4" />
-            {commentsLoading ? "..." : validComments.length}
+            {commentsLoading ? "..." : comments.length}
           </Button>
         </div>
 
         {showComments && (
           <>
-            <ScrollArea className="h-48 w-full rounded-md border p-4">
+            <ScrollArea className="h-[400px] w-full rounded-md border p-4">
               {commentsLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-sm text-muted-foreground">Loading comments...</p>
                 </div>
-              ) : validComments.length === 0 ? (
+              ) : comments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-2">
                   <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
                   <p className="text-sm text-muted-foreground text-center">
@@ -330,99 +332,14 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                   </p>
                 </div>
               ) : (
-                validComments.map((comment) => (
-                  <div
+                topLevelComments.map((comment) => (
+                  <CommentThread
                     key={comment.id}
-                    className={`mb-4 last:mb-0 rounded-lg p-3 transition-all duration-300 ${
-                      comment.userId === user?.id
-                        ? "bg-blue-100 dark:bg-blue-900/30"
-                        : "bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50"
-                    } ${comment.editedAt ? 'animate-highlight' : ''}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <UserCircle className={`h-4 w-4 ${
-                          comment.userId === user?.id ? "text-blue-600" : "text-muted-foreground"
-                        }`} />
-                        <p className={`text-sm font-medium ${
-                          comment.userId === user?.id ? "text-blue-600" : ""
-                        }`}>
-                          {comment.username || "Unknown"}
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {comment.createdAt ? format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a") : ""}
-                          {comment.editedAt && (
-                            <span className="ml-1 italic">
-                              (edited {format(new Date(comment.editedAt), "MMM d 'at' h:mm a")})
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      {user && comment.userId === user.id && (
-                        <div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => {
-                                setEditingCommentId(comment.id);
-                                setEditContent(comment.content);
-                              }}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setCommentToDelete(comment.id)}
-                                className="text-destructive"
-                              >
-                                <Trash className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      )}
-                    </div>
-                    {editingCommentId === comment.id ? (
-                      <div className="flex gap-2 mt-2">
-                        <Input
-                          value={editContent}
-                          onChange={(e) => setEditContent(e.target.value)}
-                          className="flex-1"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            editCommentMutation.mutate({
-                              id: comment.id,
-                              content: editContent,
-                            });
-                          }}
-                          disabled={!editContent.trim() || editCommentMutation.isPending}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setEditingCommentId(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <p className={`text-sm mt-1.5 pl-6 ${
-                        comment.userId === user?.id
-                          ? "text-blue-900 dark:text-blue-100 font-medium"
-                          : "text-gray-700 dark:text-gray-300"
-                      }`}>
-                        {comment.content}
-                      </p>
-                    )}
-                  </div>
+                    comment={comment}
+                    replies={comments}
+                    currentUser={user}
+                    postId={post.id}
+                  />
                 ))
               )}
             </ScrollArea>
@@ -453,7 +370,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
           </>
         )}
       </CardFooter>
-      <AlertDialog open={commentToDelete !== null} onOpenChange={setCommentToDelete}>
+      <AlertDialog open={commentToDelete !== null} onOpenChange={(open) => setCommentToDelete(open ? commentToDelete : null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Comment</AlertDialogTitle>
