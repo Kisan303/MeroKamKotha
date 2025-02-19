@@ -24,12 +24,23 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const [showComments, setShowComments] = useState(false);
   const [optimisticLikeCount, setOptimisticLikeCount] = useState<number | null>(null);
 
-  const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
-    queryKey: ["/api/posts", post.id, "comments"],
-    refetchInterval: false, // Using WebSocket instead of polling
+  // Query for likes data
+  const { data: likesData, isLoading: likesLoading } = useQuery<LikeResponse>({
+    queryKey: ["/api/posts", post.id, "likes"],
+    refetchInterval: false, // Using WebSocket for real-time updates
   });
 
-  // Setup WebSocket listeners
+  // Query for comments
+  const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
+    queryKey: ["/api/posts", post.id, "comments"],
+    refetchInterval: false, // Using WebSocket for real-time updates
+  });
+
+  const likes = likesData?.likes ?? [];
+  const likeCount = optimisticLikeCount ?? likesData?.count ?? 0;
+  const isLiked = user ? likes.some((like) => like.userId === user.id) : false;
+
+  // Setup WebSocket listeners for real-time updates
   useEffect(() => {
     socket.emit("join-post", post.id.toString());
 
@@ -42,15 +53,23 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       }
     });
 
+    socket.on("likes-updated", (data: { liked: boolean; count: number }) => {
+      queryClient.setQueryData<LikeResponse>(
+        ["/api/posts", post.id, "likes"],
+        (old) => ({
+          likes: old?.likes ?? [],
+          count: data.count
+        })
+      );
+      setOptimisticLikeCount(data.count);
+    });
+
     return () => {
       socket.emit("leave-post", post.id.toString());
       socket.off("new-comment");
+      socket.off("likes-updated");
     };
   }, [post.id]);
-
-  const likes = likesData?.likes ?? [];
-  const likeCount = optimisticLikeCount ?? likesData?.count ?? 0;
-  const isLiked = user ? likes.some((like) => like.userId === user.id) : false;
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -107,12 +126,6 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   });
 
   const validComments = comments.filter((comment) => comment.content && comment.content.trim());
-
-  const { data: likesData, isLoading: likesLoading } = useQuery<LikeResponse>({
-    queryKey: ["/api/posts", post.id, "likes"],
-    refetchInterval: false, // Disable polling since we'll use WebSocket
-  });
-
 
   return (
     <Card className="relative">
@@ -227,20 +240,20 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                 </div>
               ) : (
                 validComments.map((comment) => (
-                  <div 
-                    key={comment.id} 
+                  <div
+                    key={comment.id}
                     className={`mb-4 last:mb-0 rounded-lg p-3 transition-all duration-300 ${
-                      comment.userId === user?.id 
-                        ? 'bg-primary/5 hover:bg-primary/10' 
-                        : 'hover:bg-muted/50'
+                      comment.userId === user?.id
+                        ? "bg-primary/5 hover:bg-primary/10"
+                        : "hover:bg-muted/50"
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <UserCircle className={`h-4 w-4 ${
-                        comment.userId === user?.id ? 'text-primary' : 'text-muted-foreground'
+                        comment.userId === user?.id ? "text-primary" : "text-muted-foreground"
                       }`} />
                       <p className={`text-sm font-medium ${
-                        comment.userId === user?.id ? 'text-primary' : ''
+                        comment.userId === user?.id ? "text-primary" : ""
                       }`}>
                         {comment.username || "Unknown"}
                       </p>
@@ -249,7 +262,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                       </span>
                     </div>
                     <p className={`text-sm mt-1 pl-6 ${
-                      comment.userId === user?.id ? 'text-primary-foreground' : ''
+                      comment.userId === user?.id ? "text-primary-foreground" : ""
                     }`}>
                       {comment.content}
                     </p>
