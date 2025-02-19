@@ -259,16 +259,16 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                     key={comment.id}
                     className={`mb-4 last:mb-0 rounded-lg p-3 transition-all duration-300 ${
                       comment.userId === user?.id
-                        ? "bg-primary/10"
-                        : "hover:bg-muted/50"
+                        ? "bg-blue-100 dark:bg-blue-900/30"
+                        : "bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50"
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <UserCircle className={`h-4 w-4 ${
-                        comment.userId === user?.id ? "text-primary" : "text-muted-foreground"
+                        comment.userId === user?.id ? "text-blue-600" : "text-muted-foreground"
                       }`} />
                       <p className={`text-sm font-medium ${
-                        comment.userId === user?.id ? "text-primary" : ""
+                        comment.userId === user?.id ? "text-blue-600" : ""
                       }`}>
                         {comment.username || "Unknown"}
                       </p>
@@ -276,10 +276,10 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                         {comment.createdAt ? format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a") : ""}
                       </span>
                     </div>
-                    <p className={`text-sm mt-1 pl-6 ${
+                    <p className={`text-sm mt-1.5 pl-6 ${
                       comment.userId === user?.id
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground"
+                        ? "text-blue-900 dark:text-blue-100 font-medium"
+                        : "text-gray-700 dark:text-gray-300"
                     }`}>
                       {comment.content}
                     </p>
