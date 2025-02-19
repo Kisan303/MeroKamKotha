@@ -21,15 +21,15 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
 
-  // Always fetch comments to keep them synchronized
+  // Fetch comments with a shorter interval for real-time updates
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    refetchInterval: 3000, // Refetch every 3 seconds for real-time updates
+    refetchInterval: 1000, // Refetch every second for more real-time feel
   });
 
   const { data: likes = [], isLoading: likesLoading } = useQuery<{ id: number; userId: number }[]>({
     queryKey: ["/api/posts", post.id, "likes"],
-    staleTime: 0,
+    refetchInterval: 1000, // Refetch likes every second
   });
 
   const isLiked = user ? likes.some((like) => like.userId === user.id) : false;
@@ -38,15 +38,40 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     mutationFn: async () => {
       await apiRequest("POST", `/api/posts/${post.id}/likes`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "likes"] });
+    onMutate: async () => {
+      // Cancel any outgoing refetches 
+      await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "likes"] });
+
+      // Snapshot the previous value
+      const previousLikes = queryClient.getQueryData(["/api/posts", post.id, "likes"]);
+
+      // Optimistically update likes
+      queryClient.setQueryData(
+        ["/api/posts", post.id, "likes"],
+        (old: typeof likes = []) => {
+          if (isLiked) {
+            return old.filter(like => like.userId !== user?.id);
+          } else {
+            return [...old, { id: Date.now(), userId: user!.id, postId: post.id }];
+          }
+        }
+      );
+
+      return { previousLikes };
     },
-    onError: (error: Error) => {
+    onError: (err, variables, context) => {
+      // Revert on error
+      if (context?.previousLikes) {
+        queryClient.setQueryData(["/api/posts", post.id, "likes"], context.previousLikes);
+      }
       toast({
         title: "Error",
         description: "Failed to update like status",
         variant: "destructive",
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "likes"] });
     },
   });
 
@@ -58,25 +83,49 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       });
       return await res.json();
     },
-    onSuccess: (newComment: CommentWithUsername) => {
-      setComment("");
-      // Immediately update the UI with the new comment
+    onMutate: async (newComment) => {
+      // Show comments when posting
+      setShowComments(true);
+
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "comments"] });
+
+      // Snapshot the previous value
+      const previousComments = queryClient.getQueryData(["/api/posts", post.id, "comments"]);
+
+      // Optimistically add new comment
+      const optimisticComment = {
+        id: Date.now(),
+        postId: post.id,
+        userId: user!.id,
+        content: comment,
+        createdAt: new Date().toISOString(),
+        username: user?.username
+      };
+
       queryClient.setQueryData(
         ["/api/posts", post.id, "comments"],
-        (oldComments: CommentWithUsername[] = []) => {
-          return [...oldComments, { ...newComment, username: user?.username }];
-        }
+        (old: CommentWithUsername[] = []) => [...old, optimisticComment]
       );
 
+      return { previousComments };
+    },
+    onSuccess: () => {
+      setComment("");
       toast({
         title: "Success",
         description: "Your comment has been posted successfully.",
       });
-
-      // Force a refresh of comments
       queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "comments"] });
     },
-    onError: (error: Error) => {
+    onError: (error, variables, context) => {
+      // Revert on error
+      if (context?.previousComments) {
+        queryClient.setQueryData(
+          ["/api/posts", post.id, "comments"],
+          context.previousComments
+        );
+      }
       toast({
         title: "Error",
         description: error.message,
@@ -178,7 +227,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             onClick={() => setShowComments(!showComments)}
           >
             <MessageSquare className="h-4 w-4" />
-            {commentsLoading ? "..." : validComments.length}
+            {commentsLoading ? "..." : validComments.length || 0}
           </Button>
         </div>
 
