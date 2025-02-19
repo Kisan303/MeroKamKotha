@@ -155,23 +155,34 @@ export function PostCard({ post }: { post: PostWithUsername }) {
         {showComments && (
           <>
             <ScrollArea className="h-48 w-full rounded-md border p-4">
-              {comments.map((comment) => (
-                <div key={comment.id} className="mb-4 last:mb-0 hover:bg-muted/50 rounded-lg p-2 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <UserCircle className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">{comment.username || "Unknown"}</p>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                    </span>
-                  </div>
-                  <p className="text-sm mt-1 pl-6">{comment.content}</p>
+              {commentsLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-sm text-muted-foreground">Loading comments...</p>
                 </div>
-              ))}
-              {comments.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center">
-                  No comments yet. Be the first to comment!
-                </p>
+              ) : comments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-2">
+                  <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    No comments yet.
+                  </p>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Be the first to share your thoughts!
+                  </p>
+                </div>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="mb-4 last:mb-0 hover:bg-muted/50 rounded-lg p-2 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <UserCircle className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-sm font-medium">{comment.username || "Unknown"}</p>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                      </span>
+                    </div>
+                    <p className="text-sm mt-1 pl-6">{comment.content}</p>
+                  </div>
+                ))
               )}
             </ScrollArea>
 
