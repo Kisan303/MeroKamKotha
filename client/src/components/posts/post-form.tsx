@@ -11,6 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, X } from "lucide-react";
 import {
+  ScrollArea,
+  ScrollBar,
+} from "@/components/ui/scroll-area";
+import {
   Form,
   FormControl,
   FormDescription,
@@ -26,8 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DialogTitle } from "@/components/ui/dialog"; // Added import
-
+import { DialogTitle } from "@/components/ui/dialog";
 
 export function PostForm({ post, onSuccess }: {
   post?: InsertPost & { id?: number };
@@ -135,166 +138,171 @@ export function PostForm({ post, onSuccess }: {
   const postType = form.watch("type");
 
   return (
-    <>
-      <DialogTitle className="text-xl font-semibold mb-4">
-        {post?.id ? "Edit Post" : "Create New Post"}
-      </DialogTitle>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField
-            control={form.control}
-            name="type"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Post Type</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select post type" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="room">Room</SelectItem>
-                    <SelectItem value="job">Job</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Title</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter title" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Enter description"
-                    className="resize-none"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Price (Optional)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="Enter price"
-                    {...field}
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      field.onChange(value ? Number(value) : null);
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="location"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Location</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter location" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {postType === "room" && (
-            <FormItem>
-              <FormLabel>Images (Optional)</FormLabel>
-              <FormControl>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  ref={fileInputRef}
-                  onChange={handleImageChange}
-                  className="cursor-pointer"
-                />
-              </FormControl>
-              <FormDescription>
-                You can upload up to 5 images. Each image must be less than 5MB.
-              </FormDescription>
-              {previews.length > 0 && (
-                <Card className="p-4">
-                  <div className="grid grid-cols-2 gap-2">
-                    {previews.map((preview, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={preview}
-                          alt={`Preview ${index + 1}`}
-                          className="rounded-md object-cover aspect-video"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 h-6 w-6"
-                          onClick={() => {
-                            setPreviews(previews.filter((_, i) => i !== index));
-                            if (fileInputRef.current) {
-                              fileInputRef.current.value = "";
-                            }
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
+    <ScrollArea className="h-[80vh] w-full pr-4">
+      <div className="space-y-6">
+        <DialogTitle className="text-xl font-semibold">
+          {post?.id ? "Edit Post" : "Create New Post"}
+        </DialogTitle>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Post Type</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select post type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="room">Room</SelectItem>
+                      <SelectItem value="job">Job</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
               )}
-            </FormItem>
-          )}
+            />
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={createMutation.isPending || updateMutation.isPending}
-          >
-            {(createMutation.isPending || updateMutation.isPending) && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter title" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter description"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Price (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="Enter price"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value ? Number(value) : null);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter location" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {postType === "room" && (
+              <FormItem>
+                <FormLabel>Images (Optional)</FormLabel>
+                <FormControl>
+                  <div className="space-y-4">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      ref={fileInputRef}
+                      onChange={handleImageChange}
+                      className="cursor-pointer"
+                    />
+                    {previews.length > 0 && (
+                      <Card className="p-4">
+                        <div className="grid grid-cols-2 gap-2">
+                          {previews.map((preview, index) => (
+                            <div key={index} className="relative">
+                              <img
+                                src={preview}
+                                alt={`Preview ${index + 1}`}
+                                className="rounded-md object-cover aspect-video"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute top-1 right-1 h-6 w-6"
+                                onClick={() => {
+                                  setPreviews(previews.filter((_, i) => i !== index));
+                                  if (fileInputRef.current) {
+                                    fileInputRef.current.value = "";
+                                  }
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    )}
+                  </div>
+                </FormControl>
+                <FormDescription>
+                  You can upload up to 5 images. Each image must be less than 5MB.
+                </FormDescription>
+              </FormItem>
             )}
-            {post?.id ? "Update" : "Create"} Post
-          </Button>
-        </form>
-      </Form>
-    </>
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
+              {(createMutation.isPending || updateMutation.isPending) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {post?.id ? "Update" : "Create"} Post
+            </Button>
+          </form>
+        </Form>
+      </div>
+      <ScrollBar />
+    </ScrollArea>
   );
 }

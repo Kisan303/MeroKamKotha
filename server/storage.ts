@@ -1,136 +1,121 @@
-import { User, Post, Comment, Like, InsertUser, InsertPost, InsertComment } from "@shared/schema";
+import { users, posts, comments, likes } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { type User, type Post, type Comment, type Like, type InsertUser, type InsertPost, type InsertComment } from "@shared/schema";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
   createPost(userId: number, post: InsertPost): Promise<Post>;
   getPost(id: number): Promise<Post | undefined>;
   getPosts(): Promise<Post[]>;
   updatePost(id: number, post: Partial<InsertPost>): Promise<Post>;
   deletePost(id: number): Promise<void>;
-  
+
   createComment(userId: number, comment: InsertComment): Promise<Comment>;
   getComments(postId: number): Promise<Comment[]>;
-  
+
   toggleLike(userId: number, postId: number): Promise<boolean>;
   getLikes(postId: number): Promise<Like[]>;
-  
+
   sessionStore: session.Store;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private posts: Map<number, Post>;
-  private comments: Map<number, Comment>;
-  private likes: Map<number, Like>;
-  private currentId: number;
+export class DatabaseStorage implements IStorage {
   readonly sessionStore: session.Store;
 
   constructor() {
-    this.users = new Map();
-    this.posts = new Map();
-    this.comments = new Map();
-    this.likes = new Map();
-    this.currentId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const user = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async createPost(userId: number, post: InsertPost): Promise<Post> {
-    const id = this.currentId++;
-    const newPost: Post = {
-      ...post,
-      id,
-      userId,
-      createdAt: new Date(),
-    };
-    this.posts.set(id, newPost);
+    const [newPost] = await db.insert(posts)
+      .values({ ...post, userId, images: post.images || null })
+      .returning();
     return newPost;
   }
 
   async getPost(id: number): Promise<Post | undefined> {
-    return this.posts.get(id);
+    const [post] = await db.select().from(posts).where(eq(posts.id, id));
+    return post;
   }
 
   async getPosts(): Promise<Post[]> {
-    return Array.from(this.posts.values());
+    return await db.select().from(posts);
   }
 
   async updatePost(id: number, updates: Partial<InsertPost>): Promise<Post> {
-    const post = await this.getPost(id);
-    if (!post) throw new Error("Post not found");
-    
-    const updatedPost = { ...post, ...updates };
-    this.posts.set(id, updatedPost);
-    return updatedPost;
+    const [post] = await db.update(posts)
+      .set(updates)
+      .where(eq(posts.id, id))
+      .returning();
+    return post;
   }
 
   async deletePost(id: number): Promise<void> {
-    this.posts.delete(id);
+    await db.delete(posts).where(eq(posts.id, id));
   }
 
   async createComment(userId: number, comment: InsertComment): Promise<Comment> {
-    const id = this.currentId++;
-    const newComment: Comment = {
-      ...comment,
-      id,
-      userId,
-      createdAt: new Date(),
-    };
-    this.comments.set(id, newComment);
+    const [newComment] = await db.insert(comments)
+      .values({ ...comment, userId })
+      .returning();
     return newComment;
   }
 
   async getComments(postId: number): Promise<Comment[]> {
-    return Array.from(this.comments.values()).filter(
-      (comment) => comment.postId === postId,
-    );
+    return await db.select()
+      .from(comments)
+      .where(eq(comments.postId, postId));
   }
 
   async toggleLike(userId: number, postId: number): Promise<boolean> {
-    const existingLike = Array.from(this.likes.values()).find(
-      (like) => like.userId === userId && like.postId === postId,
-    );
+    const [existingLike] = await db.select()
+      .from(likes)
+      .where(eq(likes.userId, userId))
+      .where(eq(likes.postId, postId));
 
     if (existingLike) {
-      this.likes.delete(existingLike.id);
+      await db.delete(likes)
+        .where(eq(likes.id, existingLike.id));
       return false;
     }
 
-    const id = this.currentId++;
-    this.likes.set(id, { id, userId, postId });
+    await db.insert(likes)
+      .values({ userId, postId });
     return true;
   }
 
   async getLikes(postId: number): Promise<Like[]> {
-    return Array.from(this.likes.values()).filter(
-      (like) => like.postId === postId,
-    );
+    return await db.select()
+      .from(likes)
+      .where(eq(likes.postId, postId));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
