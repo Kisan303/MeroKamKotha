@@ -1,6 +1,6 @@
 import { users, posts, comments, likes } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   type User,
   type Post,
@@ -110,7 +110,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(comments)
       .where(eq(comments.postId, postId))
-      .orderBy(comments.createdAt, "asc");
+      .orderBy(comments.createdAt, sql.asc);
     return commentsList; // Sorted old comments first
   }
 
