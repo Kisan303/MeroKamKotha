@@ -106,12 +106,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getComments(postId: number): Promise<Comment[]> {
-    const commentsList = await db
+    console.log(`[Storage] Getting comments for post ${postId}`);
+    const comments = await db
       .select()
       .from(comments)
       .where(eq(comments.postId, postId))
-      .orderBy(comments.createdAt, sql.asc);
-    return commentsList; // Sorted old comments first
+      .orderBy(sql`${comments.createdAt} ASC`); // Explicitly order by creation time
+
+    console.log(`[Storage] Retrieved ${comments.length} comments`);
+    return comments;
   }
 
   async toggleLike(userId: number, postId: number): Promise<boolean> {

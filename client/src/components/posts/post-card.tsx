@@ -33,8 +33,9 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   // Query for comments with proper error handling
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    enabled: showComments, // Only fetch when comments are shown
-    staleTime: 0, // Always fetch fresh data
+    enabled: true, // Always fetch comments
+    refetchOnMount: true, // Refetch when component mounts
+    staleTime: 1000 * 60, // Consider data fresh for 1 minute
   });
 
   const likes = likesData?.likes ?? [];
@@ -43,10 +44,13 @@ export function PostCard({ post }: { post: PostWithUsername }) {
 
   // Setup WebSocket listeners for real-time updates
   useEffect(() => {
+    // Join the post's room for real-time updates
     socket.emit("join-post", post.id.toString());
+    console.log(`Joined post room: ${post.id}`);
 
     socket.on("new-comment", (newComment: CommentWithUsername) => {
       if (newComment.postId === post.id) {
+        console.log('Received new comment:', newComment);
         queryClient.setQueryData<CommentWithUsername[]>(
           ["/api/posts", post.id, "comments"],
           (old = []) => {
@@ -61,18 +65,9 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       }
     });
 
-    socket.on("likes-updated", (data: { liked: boolean; count: number }) => {
-      queryClient.setQueryData<LikeResponse>(
-        ["/api/posts", post.id, "likes"],
-        (old) => ({
-          likes: old?.likes ?? [],
-          count: data.count
-        })
-      );
-      setOptimisticLikeCount(data.count);
-    });
-
+    // Cleanup function
     return () => {
+      console.log(`Leaving post room: ${post.id}`);
       socket.emit("leave-post", post.id.toString());
       socket.off("new-comment");
       socket.off("likes-updated");
