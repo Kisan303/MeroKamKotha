@@ -23,6 +23,7 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
+      fullname: "", // Add this but it won't be used in login
     },
   });
 
@@ -31,8 +32,14 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
+      fullname: "",
     },
   });
+
+  const onRegisterSuccess = () => {
+    const { username, password } = registerForm.getValues();
+    loginMutation.mutate({ username, password });
+  };
 
   return (
     <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
@@ -88,7 +95,20 @@ export default function AuthPage() {
 
               <TabsContent value="register">
                 <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
+                  <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data, { onSuccess: onRegisterSuccess }))} className="space-y-4">
+                    <FormField
+                      control={registerForm.control}
+                      name="fullname"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={registerForm.control}
                       name="username"
