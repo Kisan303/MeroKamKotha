@@ -10,22 +10,27 @@ import { format } from "date-fns";
 import { Heart, MessageSquare, Trash, Edit, Clock, UserCircle } from "lucide-react";
 import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 type PostWithUsername = Post & { username?: string };
 type CommentWithUsername = Comment & { username?: string };
 
 export function PostCard({ post }: { post: PostWithUsername }) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
 
+  // Always fetch comments to keep them in sync
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    enabled: showComments,
+    staleTime: 0, // Always fetch fresh data
+    refetchInterval: 5000, // Refetch every 5 seconds
   });
 
   const { data: likes = [], isLoading: likesLoading } = useQuery<{ id: number; userId: number }[]>({
     queryKey: ["/api/posts", post.id, "likes"],
+    staleTime: 0,
   });
 
   const isLiked = user ? likes.some((like) => like.userId === user.id) : false;
@@ -37,17 +42,46 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "likes"] });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update like status",
+        variant: "destructive",
+      });
+    },
   });
 
   const commentMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/posts/${post.id}/comments`, { content: comment, postId: post.id });
+      const res = await apiRequest("POST", `/api/posts/${post.id}/comments`, { 
+        content: comment, 
+        postId: post.id 
+      });
       return await res.json();
     },
     onSuccess: (newComment: CommentWithUsername) => {
       setComment("");
-      queryClient.setQueryData(["/api/posts", post.id, "comments"], (oldComments: CommentWithUsername[] = []) => {
-        return [...oldComments, { ...newComment, username: user?.username }];
+      // Update local cache immediately
+      queryClient.setQueryData(["/api/posts", post.id, "comments"], 
+        (oldComments: CommentWithUsername[] = []) => {
+          return [...oldComments, { ...newComment, username: user?.username }];
+      });
+      // Invalidate to ensure we get fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "comments"] });
+
+      // Show notification if the comment is for another user's post
+      if (post.userId !== user?.id) {
+        toast({
+          title: "Comment posted",
+          description: "The post owner will be notified of your comment.",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to post comment. Please try again.",
+        variant: "destructive",
       });
     },
   });
