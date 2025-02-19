@@ -14,6 +14,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +41,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const [editContent, setEditContent] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [optimisticLikeCount, setOptimisticLikeCount] = useState<number | null>(null);
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
 
   const { data: likesData, isLoading: likesLoading } = useQuery<LikeResponse>({
     queryKey: ["/api/posts", post.id, "likes"],
@@ -193,6 +204,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
         title: "Success",
         description: "Comment deleted successfully",
       });
+      setCommentToDelete(null);
     },
     onError: (error) => {
       toast({
@@ -363,11 +375,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => {
-                                  if (window.confirm('Are you sure you want to delete this comment?')) {
-                                    deleteCommentMutation.mutate(comment.id);
-                                  }
-                                }}
+                                onClick={() => setCommentToDelete(comment.id)}
                                 className="text-destructive"
                               >
                                 <Trash className="h-4 w-4 mr-2" />
@@ -445,6 +453,29 @@ export function PostCard({ post }: { post: PostWithUsername }) {
           </>
         )}
       </CardFooter>
+      <AlertDialog open={commentToDelete !== null} onOpenChange={setCommentToDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Comment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this comment? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (commentToDelete) {
+                  deleteCommentMutation.mutate(commentToDelete);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
