@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { Heart, MessageSquare, Trash, Edit, Clock, UserCircle } from "lucide-react";
+import { Heart, MessageSquare, Trash, Edit, Clock, UserCircle, Check, X } from "lucide-react";
 import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -21,16 +21,16 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [comment, setComment] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [optimisticLikeCount, setOptimisticLikeCount] = useState<number | null>(null);
 
-  // Query for likes data
   const { data: likesData, isLoading: likesLoading } = useQuery<LikeResponse>({
     queryKey: ["/api/posts", post.id, "likes"],
-    refetchInterval: false, // Using WebSocket for real-time updates
+    refetchInterval: false,
   });
 
-  // Query for comments with proper error handling
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     queryFn: async () => {
@@ -43,18 +43,16 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       console.log(`Received ${data.length} comments for post ${post.id}`, data);
       return data;
     },
-    enabled: true, // Always fetch comments
-    refetchOnMount: true, // Refetch when component mounts
-    staleTime: 1000 * 60, // Consider data fresh for 1 minute
+    enabled: true,
+    refetchOnMount: true,
+    staleTime: 1000 * 60,
   });
 
   const likes = likesData?.likes ?? [];
   const likeCount = optimisticLikeCount ?? likesData?.count ?? 0;
   const isLiked = user ? likes.some((like) => like.userId === user.id) : false;
 
-  // Setup WebSocket listeners for real-time updates
   useEffect(() => {
-    // Join the post's room for real-time updates
     socket.emit("join-post", post.id.toString());
     console.log(`Joined post room: ${post.id}`);
 
@@ -64,23 +62,38 @@ export function PostCard({ post }: { post: PostWithUsername }) {
         queryClient.setQueryData<CommentWithUsername[]>(
           ["/api/posts", post.id, "comments"],
           (old = []) => {
-            // Ensure we don't add duplicate comments
             const exists = old.some(c => c.id === newComment.id);
             if (exists) return old;
-
-            // Add new comment at the end (it's the most recent)
             return [...old, newComment];
           }
         );
       }
     });
 
-    // Cleanup function
+    socket.on("comment-updated", (updatedComment: CommentWithUsername) => {
+      if (updatedComment.postId === post.id) {
+        queryClient.setQueryData<CommentWithUsername[]>(
+          ["/api/posts", post.id, "comments"],
+          (old = []) => old.map(c => c.id === updatedComment.id ? updatedComment : c)
+        );
+      }
+    });
+
+    socket.on("comment-deleted", (deletedCommentId: number) => {
+      queryClient.setQueryData<CommentWithUsername[]>(
+        ["/api/posts", post.id, "comments"],
+        (old = []) => old.filter(c => c.id !== deletedCommentId)
+      );
+    });
+
+
     return () => {
       console.log(`Leaving post room: ${post.id}`);
       socket.emit("leave-post", post.id.toString());
       socket.off("new-comment");
       socket.off("likes-updated");
+      socket.off("comment-updated");
+      socket.off("comment-deleted");
     };
   }, [post.id, queryClient]);
 
@@ -91,11 +104,9 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "likes"] });
-
       const previousData = queryClient.getQueryData<LikeResponse>(["/api/posts", post.id, "likes"]);
       const newCount = isLiked ? (likeCount - 1) : (likeCount + 1);
       setOptimisticLikeCount(newCount);
-
       return { previousData };
     },
     onError: (err, _, context) => {
@@ -138,9 +149,56 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     },
   });
 
+  const editCommentMutation = useMutation({
+    mutationFn: async ({ id, content }: { id: number; content: string }) => {
+      const res = await apiRequest("PATCH", `/api/comments/${id}`, { content });
+      return await res.json();
+    },
+    onSuccess: (updatedComment) => {
+      queryClient.setQueryData<CommentWithUsername[]>(
+        ["/api/posts", post.id, "comments"],
+        (old = []) => old.map(c => c.id === updatedComment.id ? updatedComment : c)
+      );
+      setEditingCommentId(null);
+      toast({
+        title: "Success",
+        description: "Comment updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/comments/${id}`);
+    },
+    onSuccess: (_, deletedId) => {
+      queryClient.setQueryData<CommentWithUsername[]>(
+        ["/api/posts", post.id, "comments"],
+        (old = []) => old.filter(c => c.id !== deletedId)
+      );
+      toast({
+        title: "Success",
+        description: "Comment deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const validComments = comments
     .filter((comment) => comment.content && comment.content.trim());
-  // No need to sort here as we're already getting them in the correct order from the server
 
   return (
     <Card className="relative">
@@ -263,26 +321,84 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                         : "bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50"
                     }`}
                   >
-                    <div className="flex items-center gap-2">
-                      <UserCircle className={`h-4 w-4 ${
-                        comment.userId === user?.id ? "text-blue-600" : "text-muted-foreground"
-                      }`} />
-                      <p className={`text-sm font-medium ${
-                        comment.userId === user?.id ? "text-blue-600" : ""
-                      }`}>
-                        {comment.username || "Unknown"}
-                      </p>
-                      <span className="text-xs text-muted-foreground">
-                        {comment.createdAt ? format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a") : ""}
-                      </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <UserCircle className={`h-4 w-4 ${
+                          comment.userId === user?.id ? "text-blue-600" : "text-muted-foreground"
+                        }`} />
+                        <p className={`text-sm font-medium ${
+                          comment.userId === user?.id ? "text-blue-600" : ""
+                        }`}>
+                          {comment.username || "Unknown"}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {comment.createdAt ? format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a") : ""}
+                        </span>
+                      </div>
+                      {user && comment.userId === user.id && (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setEditingCommentId(comment.id);
+                              setEditContent(comment.content);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to delete this comment?')) {
+                                deleteCommentMutation.mutate(comment.id);
+                              }
+                            }}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    <p className={`text-sm mt-1.5 pl-6 ${
-                      comment.userId === user?.id
-                        ? "text-blue-900 dark:text-blue-100 font-medium"
-                        : "text-gray-700 dark:text-gray-300"
-                    }`}>
-                      {comment.content}
-                    </p>
+                    {editingCommentId === comment.id ? (
+                      <div className="flex gap-2 mt-2">
+                        <Input
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            editCommentMutation.mutate({
+                              id: comment.id,
+                              content: editContent,
+                            });
+                          }}
+                          disabled={!editContent.trim() || editCommentMutation.isPending}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingCommentId(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className={`text-sm mt-1.5 pl-6 ${
+                        comment.userId === user?.id
+                          ? "text-blue-900 dark:text-blue-100 font-medium"
+                          : "text-gray-700 dark:text-gray-300"
+                      }`}>
+                        {comment.content}
+                      </p>
+                    )}
                   </div>
                 ))
               )}

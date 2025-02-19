@@ -153,6 +153,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add these new routes in the comments section
+  app.patch("/api/comments/:id", requireAuth, async (req, res) => {
+    try {
+      const commentId = Number(req.params.id);
+      const comment = await storage.getComments(commentId);
+
+      // Check if comment exists and belongs to the user
+      if (!comment || comment[0].userId !== req.user!.id) {
+        return res.status(403).json({ error: "Not authorized to edit this comment" });
+      }
+
+      const updatedComment = await storage.updateComment(commentId, req.body.content);
+      const user = await storage.getUser(updatedComment.userId);
+      const commentWithUser = { ...updatedComment, username: user?.username };
+
+      // Emit updated comment to all clients viewing this post
+      io.to(`post-${updatedComment.postId}`).emit("comment-updated", commentWithUser);
+
+      res.json(commentWithUser);
+    } catch (error) {
+      console.error('[PATCH /api/comments/:id] Error:', error);
+      res.status(500).json({ error: "Failed to update comment" });
+    }
+  });
+
+  app.delete("/api/comments/:id", requireAuth, async (req, res) => {
+    try {
+      const commentId = Number(req.params.id);
+      const comment = await storage.getComments(commentId);
+
+      // Check if comment exists and belongs to the user
+      if (!comment || comment[0].userId !== req.user!.id) {
+        return res.status(403).json({ error: "Not authorized to delete this comment" });
+      }
+
+      await storage.deleteComment(commentId);
+
+      // Emit deletion event to all clients viewing this post
+      io.to(`post-${comment[0].postId}`).emit("comment-deleted", commentId);
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('[DELETE /api/comments/:id] Error:', error);
+      res.status(500).json({ error: "Failed to delete comment" });
+    }
+  });
+
   // Likes
   app.post("/api/posts/:id/likes", requireAuth, async (req, res) => {
     try {

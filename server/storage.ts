@@ -29,6 +29,8 @@ export interface IStorage {
 
   createComment(userId: number, comment: InsertComment): Promise<Comment>;
   getComments(postId: number): Promise<Comment[]>;
+  updateComment(id: number, content: string): Promise<Comment>;
+  deleteComment(id: number): Promise<void>;
 
   toggleLike(userId: number, postId: number): Promise<boolean>;
   getLikes(postId: number): Promise<Like[]>;
@@ -120,6 +122,19 @@ export class DatabaseStorage implements IStorage {
       console.error(`[Storage] Error getting comments for post ${postId}:`, error);
       throw error;
     }
+  }
+
+  async updateComment(id: number, content: string): Promise<Comment> {
+    const [comment] = await db
+      .update(comments)
+      .set({ content })
+      .where(eq(comments.id, id))
+      .returning();
+    return comment;
+  }
+
+  async deleteComment(id: number): Promise<void> {
+    await db.delete(comments).where(eq(comments.id, id));
   }
 
   async toggleLike(userId: number, postId: number): Promise<boolean> {
