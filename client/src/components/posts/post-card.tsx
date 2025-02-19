@@ -12,9 +12,9 @@ import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 
+type LikeResponse = { likes: { id: number; userId: number }[]; count: number };
 type PostWithUsername = Post & { username?: string };
 type CommentWithUsername = Comment & { username?: string };
-type LikeResponse = { likes: { id: number; userId: number }[]; count: number };
 
 export function PostCard({ post }: { post: PostWithUsername }) {
   const { user } = useAuth();
