@@ -92,7 +92,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select()
       .from(comments)
       .where(eq(comments.postId, postId))
-      .orderBy(comments.createdAt); // Add explicit ordering
+      .orderBy(comments.createdAt, "asc"); // Sort old comments first
   }
 
   async toggleLike(userId: number, postId: number): Promise<boolean> {

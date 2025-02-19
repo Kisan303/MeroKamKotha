@@ -33,8 +33,8 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   // Query for comments with proper error handling
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    refetchInterval: false, // Using WebSocket for real-time updates
-    staleTime: Infinity, // Prevent automatic refetching
+    enabled: showComments, // Only fetch when comments are shown
+    staleTime: 0, // Always fetch fresh data
   });
 
   const likes = likesData?.likes ?? [];
@@ -54,11 +54,8 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             const exists = old.some(c => c.id === newComment.id);
             if (exists) return old;
 
-            // Add new comment and sort by creation time
-            const updated = [...old, newComment];
-            return updated.sort((a, b) => 
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            );
+            // Add new comment at the end (it's the most recent)
+            return [...old, newComment];
           }
         );
       }
@@ -137,8 +134,8 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   });
 
   const validComments = comments
-    .filter((comment) => comment.content && comment.content.trim())
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .filter((comment) => comment.content && comment.content.trim());
+  // No need to sort here as we're already getting them in the correct order from the server
 
   return (
     <Card className="relative">
@@ -275,8 +272,8 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                       </span>
                     </div>
                     <p className={`text-sm mt-1 pl-6 ${
-                      comment.userId === user?.id 
-                        ? "text-foreground font-medium" 
+                      comment.userId === user?.id
+                        ? "text-foreground font-medium"
                         : "text-muted-foreground"
                     }`}>
                       {comment.content}
