@@ -107,26 +107,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Comments
   app.post("/api/posts/:id/comments", requireAuth, async (req, res) => {
-    const parsed = insertCommentSchema.parse(req.body);
-    const comment = await storage.createComment(req.user!.id, parsed);
-    const user = await storage.getUser(comment.userId);
-    const commentWithUser = { ...comment, username: user?.username };
+    try {
+      const parsed = insertCommentSchema.parse(req.body);
+      const comment = await storage.createComment(req.user!.id, parsed);
+      const user = await storage.getUser(comment.userId);
+      const commentWithUser = { ...comment, username: user?.username };
 
-    // Emit new comment to all clients viewing this post
-    io.to(`post-${comment.postId}`).emit("new-comment", commentWithUser);
+      // Emit new comment to all clients viewing this post
+      io.to(`post-${comment.postId}`).emit("new-comment", commentWithUser);
 
-    res.json(commentWithUser);
+      res.json(commentWithUser);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create comment" });
+    }
   });
 
   app.get("/api/posts/:id/comments", async (req, res) => {
-    const comments = await storage.getComments(Number(req.params.id));
-    const commentsWithUsernames = await Promise.all(
-      comments.map(async (comment) => {
-        const user = await storage.getUser(comment.userId);
-        return { ...comment, username: user?.username };
-      })
-    );
-    res.json(commentsWithUsernames);
+    try {
+      const comments = await storage.getComments(Number(req.params.id));
+      const commentsWithUsernames = await Promise.all(
+        comments.map(async (comment) => {
+          const user = await storage.getUser(comment.userId);
+          return { ...comment, username: user?.username };
+        })
+      );
+      res.json(commentsWithUsernames);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get comments" });
+    }
   });
 
   // Likes

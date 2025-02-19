@@ -26,20 +26,13 @@ export function PostCard({ post }: { post: PostWithUsername }) {
 
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    refetchInterval: false, // Disable polling since we'll use WebSocket
-  });
-
-  const { data: likesData, isLoading: likesLoading } = useQuery<LikeResponse>({
-    queryKey: ["/api/posts", post.id, "likes"],
-    refetchInterval: false, // Disable polling since we'll use WebSocket
+    refetchInterval: false, // Using WebSocket instead of polling
   });
 
   // Setup WebSocket listeners
   useEffect(() => {
-    // Join post room
     socket.emit("join-post", post.id.toString());
 
-    // Listen for new comments
     socket.on("new-comment", (newComment: CommentWithUsername) => {
       if (newComment.postId === post.id) {
         queryClient.setQueryData<CommentWithUsername[]>(
@@ -49,20 +42,9 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       }
     });
 
-    // Listen for likes updates
-    socket.on("likes-updated", (data: LikeResponse) => {
-      queryClient.setQueryData(
-        ["/api/posts", post.id, "likes"],
-        data
-      );
-      setOptimisticLikeCount(data.count);
-    });
-
-    // Cleanup
     return () => {
       socket.emit("leave-post", post.id.toString());
       socket.off("new-comment");
-      socket.off("likes-updated");
     };
   }, [post.id]);
 
@@ -125,6 +107,12 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   });
 
   const validComments = comments.filter((comment) => comment.content && comment.content.trim());
+
+  const { data: likesData, isLoading: likesLoading } = useQuery<LikeResponse>({
+    queryKey: ["/api/posts", post.id, "likes"],
+    refetchInterval: false, // Disable polling since we'll use WebSocket
+  });
+
 
   return (
     <Card className="relative">
@@ -239,15 +227,32 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                 </div>
               ) : (
                 validComments.map((comment) => (
-                  <div key={comment.id} className="mb-4 last:mb-0 hover:bg-muted/50 rounded-lg p-2 transition-colors">
+                  <div 
+                    key={comment.id} 
+                    className={`mb-4 last:mb-0 rounded-lg p-3 transition-all duration-300 ${
+                      comment.userId === user?.id 
+                        ? 'bg-primary/5 hover:bg-primary/10' 
+                        : 'hover:bg-muted/50'
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
-                      <UserCircle className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-medium">{comment.username || "Unknown"}</p>
+                      <UserCircle className={`h-4 w-4 ${
+                        comment.userId === user?.id ? 'text-primary' : 'text-muted-foreground'
+                      }`} />
+                      <p className={`text-sm font-medium ${
+                        comment.userId === user?.id ? 'text-primary' : ''
+                      }`}>
+                        {comment.username || "Unknown"}
+                      </p>
                       <span className="text-xs text-muted-foreground">
                         {comment.createdAt ? format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a") : ""}
                       </span>
                     </div>
-                    <p className="text-sm mt-1 pl-6">{comment.content}</p>
+                    <p className={`text-sm mt-1 pl-6 ${
+                      comment.userId === user?.id ? 'text-primary-foreground' : ''
+                    }`}>
+                      {comment.content}
+                    </p>
                   </div>
                 ))
               )}
