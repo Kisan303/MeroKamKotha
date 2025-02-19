@@ -21,11 +21,10 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
 
-  // Always fetch comments to keep them in sync
+  // Always fetch comments to keep them synchronized
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    staleTime: 0, // Always fetch fresh data
-    refetchInterval: 5000, // Refetch every 5 seconds
+    refetchInterval: 3000, // Refetch every 3 seconds for real-time updates
   });
 
   const { data: likes = [], isLoading: likesLoading } = useQuery<{ id: number; userId: number }[]>({
@@ -61,26 +60,26 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     },
     onSuccess: (newComment: CommentWithUsername) => {
       setComment("");
-      // Update local cache immediately
-      queryClient.setQueryData(["/api/posts", post.id, "comments"], 
+      // Immediately update the UI with the new comment
+      queryClient.setQueryData(
+        ["/api/posts", post.id, "comments"],
         (oldComments: CommentWithUsername[] = []) => {
           return [...oldComments, { ...newComment, username: user?.username }];
-      });
-      // Invalidate to ensure we get fresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "comments"] });
+        }
+      );
 
-      // Show notification if the comment is for another user's post
-      if (post.userId !== user?.id) {
-        toast({
-          title: "Comment posted",
-          description: "The post owner will be notified of your comment.",
-        });
-      }
+      toast({
+        title: "Success",
+        description: "Your comment has been posted successfully.",
+      });
+
+      // Force a refresh of comments
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "comments"] });
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to post comment. Please try again.",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -92,6 +91,10 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      toast({
+        title: "Success",
+        description: "Post deleted successfully",
+      });
     },
   });
 
