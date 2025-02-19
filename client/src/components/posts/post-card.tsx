@@ -41,11 +41,14 @@ export function PostCard({ post }: { post: PostWithUsername }) {
 
   const commentMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", `/api/posts/${post.id}/comments`, { content: comment, postId: post.id });
+      const res = await apiRequest("POST", `/api/posts/${post.id}/comments`, { content: comment, postId: post.id });
+      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (newComment: CommentWithUsername) => {
       setComment("");
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "comments"] });
+      queryClient.setQueryData(["/api/posts", post.id, "comments"], (oldComments: CommentWithUsername[] = []) => {
+        return [...oldComments, { ...newComment, username: user?.username }];
+      });
     },
   });
 
