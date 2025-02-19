@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, ImagePlus } from "lucide-react";
 import {
   ScrollArea,
   ScrollBar,
@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DialogTitle } from "@/components/ui/dialog";
+import { DialogTitle, DialogClose } from "@/components/ui/dialog";
 
 export function PostForm({ post, onSuccess }: {
   post?: InsertPost & { id?: number };
@@ -39,6 +39,7 @@ export function PostForm({ post, onSuccess }: {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const form = useForm<InsertPost>({
     resolver: zodResolver(insertPostSchema),
@@ -85,6 +86,7 @@ export function PostForm({ post, onSuccess }: {
       });
       form.reset();
       setPreviews([]);
+      closeButtonRef.current?.click(); // Automatically close the dialog
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -106,6 +108,7 @@ export function PostForm({ post, onSuccess }: {
         title: "Success",
         description: "Post updated successfully",
       });
+      closeButtonRef.current?.click(); // Automatically close the dialog
       onSuccess?.();
     },
   });
@@ -138,8 +141,8 @@ export function PostForm({ post, onSuccess }: {
   const postType = form.watch("type");
 
   return (
-    <ScrollArea className="h-[80vh] w-full pr-4">
-      <div className="space-y-6">
+    <ScrollArea className="h-[80vh] w-full">
+      <div className="space-y-6 px-6">
         <DialogTitle className="text-xl font-semibold">
           {post?.id ? "Edit Post" : "Create New Post"}
         </DialogTitle>
@@ -193,7 +196,7 @@ export function PostForm({ post, onSuccess }: {
                   <FormControl>
                     <Textarea
                       placeholder="Enter description"
-                      className="min-h-[100px]"
+                      className="min-h-[120px]"
                       {...field}
                     />
                   </FormControl>
@@ -202,71 +205,83 @@ export function PostForm({ post, onSuccess }: {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Price (Optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="Enter price"
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        field.onChange(value ? Number(value) : null);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="Enter price"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value ? Number(value) : null);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter location" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter location" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {postType === "room" && (
               <FormItem>
                 <FormLabel>Images (Optional)</FormLabel>
                 <FormControl>
                   <div className="space-y-4">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      ref={fileInputRef}
-                      onChange={handleImageChange}
-                      className="cursor-pointer"
-                    />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        ref={fileInputRef}
+                        onChange={handleImageChange}
+                        className="cursor-pointer"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <ImagePlus className="h-4 w-4" />
+                      </Button>
+                    </div>
                     {previews.length > 0 && (
                       <Card className="p-4">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-4">
                           {previews.map((preview, index) => (
-                            <div key={index} className="relative">
+                            <div key={index} className="relative group">
                               <img
                                 src={preview}
                                 alt={`Preview ${index + 1}`}
-                                className="rounded-md object-cover aspect-video"
+                                className="rounded-md w-full h-48 object-cover"
                               />
                               <Button
                                 type="button"
                                 variant="destructive"
                                 size="icon"
-                                className="absolute top-1 right-1 h-6 w-6"
+                                className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={() => {
                                   setPreviews(previews.filter((_, i) => i !== index));
                                   if (fileInputRef.current) {
@@ -289,16 +304,20 @@ export function PostForm({ post, onSuccess }: {
               </FormItem>
             )}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
-              {(createMutation.isPending || updateMutation.isPending) && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {post?.id ? "Update" : "Create"} Post
-            </Button>
+            <div className="flex gap-4 justify-end">
+              <DialogClose ref={closeButtonRef} asChild>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {(createMutation.isPending || updateMutation.isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {post?.id ? "Update" : "Create"} Post
+              </Button>
+            </div>
           </form>
         </Form>
       </div>
