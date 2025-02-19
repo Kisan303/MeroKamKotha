@@ -341,7 +341,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                         </span>
                       </div>
                       {user && comment.userId === user.id && (
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
