@@ -30,20 +30,22 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const { data: likes = [], isLoading: likesLoading } = useQuery<{ id: number; userId: number }[]>({
     queryKey: ["/api/posts", post.id, "likes"],
     refetchInterval: 1000, // Refetch likes every second
+    initialData: [], // Initialize with empty array
   });
 
   const isLiked = user ? likes.some((like) => like.userId === user.id) : false;
 
   const likeMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", `/api/posts/${post.id}/likes`);
+      const res = await apiRequest("POST", `/api/posts/${post.id}/likes`);
+      return res.json();
     },
     onMutate: async () => {
       // Cancel any outgoing refetches 
       await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "likes"] });
 
       // Snapshot the previous value
-      const previousLikes = queryClient.getQueryData(["/api/posts", post.id, "likes"]);
+      const previousLikes = queryClient.getQueryData(["/api/posts", post.id, "likes"]) as typeof likes;
 
       // Optimistically update likes
       queryClient.setQueryData(
@@ -51,9 +53,10 @@ export function PostCard({ post }: { post: PostWithUsername }) {
         (old: typeof likes = []) => {
           if (isLiked) {
             return old.filter(like => like.userId !== user?.id);
-          } else {
-            return [...old, { id: Date.now(), userId: user!.id, postId: post.id }];
+          } else if (user) {
+            return [...old, { id: Date.now(), userId: user.id, postId: post.id }];
           }
+          return old;
         }
       );
 
@@ -70,7 +73,8 @@ export function PostCard({ post }: { post: PostWithUsername }) {
         variant: "destructive",
       });
     },
-    onSuccess: () => {
+    onSettled: () => {
+      // Always refetch after mutation completes (success or error)
       queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "likes"] });
     },
   });
@@ -217,7 +221,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                 isLiked ? "fill-primary text-primary animate-scale" : ""
               }`} 
             />
-            {likesLoading ? "..." : likes.length || 0}
+            {likesLoading ? "..." : likes.length}
           </Button>
           <Button 
             variant="ghost" 
@@ -227,7 +231,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             onClick={() => setShowComments(!showComments)}
           >
             <MessageSquare className="h-4 w-4" />
-            {commentsLoading ? "..." : validComments.length || 0}
+            {commentsLoading ? "..." : validComments.length}
           </Button>
         </div>
 
