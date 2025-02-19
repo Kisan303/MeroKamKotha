@@ -51,7 +51,9 @@ export function PostCard({ post }: { post: PostWithUsername }) {
           (old = []) => {
             // Ensure we don't add duplicate comments
             const exists = old.some(c => c.id === newComment.id);
-            return exists ? old : [...old, newComment];
+            return exists ? old : [...old, newComment].sort((a, b) => 
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            );
           }
         );
       }
@@ -159,7 +161,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => deleteMutation.mutate()}
+                  onClick={() => {/*deleteMutation.mutate()*/} }
                 >
                   <Trash className="h-4 w-4" />
                 </Button>
@@ -243,7 +245,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                   </p>
                 </div>
               ) : (
-                validComments.map((comment) => (
+                validComments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((comment) => (
                   <div
                     key={comment.id}
                     className={`mb-4 last:mb-0 rounded-lg p-3 transition-all duration-300 ${

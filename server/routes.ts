@@ -131,7 +131,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return { ...comment, username: user?.username };
         })
       );
-      res.json(commentsWithUsernames);
+      res.json(commentsWithUsernames.sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      ));
     } catch (error) {
       res.status(500).json({ error: "Failed to get comments" });
     }
