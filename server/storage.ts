@@ -108,14 +108,14 @@ export class DatabaseStorage implements IStorage {
   async getComments(postId: number): Promise<Comment[]> {
     console.log(`[Storage] Getting comments for post ${postId}`);
     try {
-      const comments = await db
+      const result = await db
         .select()
         .from(comments)
         .where(eq(comments.postId, postId))
         .orderBy(sql`${comments.createdAt} ASC`);
 
-      console.log(`[Storage] Successfully retrieved ${comments.length} comments:`, comments);
-      return comments;
+      console.log(`[Storage] Successfully retrieved ${result.length} comments:`, result);
+      return result;
     } catch (error) {
       console.error(`[Storage] Error getting comments for post ${postId}:`, error);
       throw error;
