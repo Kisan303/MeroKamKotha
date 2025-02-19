@@ -48,7 +48,11 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       if (newComment.postId === post.id) {
         queryClient.setQueryData<CommentWithUsername[]>(
           ["/api/posts", post.id, "comments"],
-          (old = []) => [...old, newComment]
+          (old = []) => {
+            // Ensure we don't add duplicate comments
+            const exists = old.some(c => c.id === newComment.id);
+            return exists ? old : [...old, newComment];
+          }
         );
       }
     });
@@ -244,7 +248,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                     key={comment.id}
                     className={`mb-4 last:mb-0 rounded-lg p-3 transition-all duration-300 ${
                       comment.userId === user?.id
-                        ? "bg-primary/5 hover:bg-primary/10"
+                        ? "bg-primary/10"
                         : "hover:bg-muted/50"
                     }`}
                   >
@@ -262,7 +266,9 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                       </span>
                     </div>
                     <p className={`text-sm mt-1 pl-6 ${
-                      comment.userId === user?.id ? "text-primary-foreground" : ""
+                      comment.userId === user?.id 
+                        ? "text-foreground font-medium" 
+                        : "text-muted-foreground"
                     }`}>
                       {comment.content}
                     </p>
