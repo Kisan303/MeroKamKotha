@@ -97,14 +97,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Likes
   app.post("/api/posts/:id/likes", requireAuth, async (req, res) => {
-    const liked = await storage.toggleLike(req.user!.id, Number(req.params.id));
-    const likes = await storage.getLikes(Number(req.params.id));
-    res.json({ liked, likes });
+    try {
+      const liked = await storage.toggleLike(req.user!.id, Number(req.params.id));
+      const likes = await storage.getLikes(Number(req.params.id));
+      res.json({ liked, count: likes.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to toggle like" });
+    }
   });
 
   app.get("/api/posts/:id/likes", async (req, res) => {
-    const likes = await storage.getLikes(Number(req.params.id));
-    res.json(likes);
+    try {
+      const likes = await storage.getLikes(Number(req.params.id));
+      res.json({ likes, count: likes.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get likes" });
+    }
   });
 
   const httpServer = createServer(app);

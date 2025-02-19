@@ -14,25 +14,27 @@ import { useToast } from "@/hooks/use-toast";
 
 type PostWithUsername = Post & { username?: string };
 type CommentWithUsername = Comment & { username?: string };
+type LikeResponse = { likes: { id: number; userId: number }[]; count: number };
 
 export function PostCard({ post }: { post: PostWithUsername }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
+  const [optimisticLikeCount, setOptimisticLikeCount] = useState<number | null>(null);
 
-  // Fetch comments with a shorter interval for real-time updates
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    refetchInterval: 1000, // Refetch every second for more real-time feel
+    refetchInterval: 1000,
   });
 
-  const { data: likes = [], isLoading: likesLoading } = useQuery<{ id: number; userId: number }[]>({
+  const { data: likesData, isLoading: likesLoading } = useQuery<LikeResponse>({
     queryKey: ["/api/posts", post.id, "likes"],
-    refetchInterval: 1000, // Refetch likes every second
-    initialData: [], // Initialize with empty array
+    refetchInterval: 1000,
   });
 
+  const likes = likesData?.likes ?? [];
+  const likeCount = optimisticLikeCount ?? likesData?.count ?? 0;
   const isLiked = user ? likes.some((like) => like.userId === user.id) : false;
 
   const likeMutation = useMutation({
@@ -41,77 +43,58 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       return await res.json();
     },
     onMutate: async () => {
-      // Cancel any outgoing refetches 
       await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "likes"] });
 
-      // Snapshot the previous value
-      const previousLikes = queryClient.getQueryData(["/api/posts", post.id, "likes"]) as typeof likes;
+      const previousData = queryClient.getQueryData<LikeResponse>(["/api/posts", post.id, "likes"]);
+      const newCount = isLiked ? (likeCount - 1) : (likeCount + 1);
+      setOptimisticLikeCount(newCount);
 
-      // Optimistically update likes
-      queryClient.setQueryData(
-        ["/api/posts", post.id, "likes"],
-        (old: typeof likes = []) => {
-          if (isLiked) {
-            return old.filter(like => like.userId !== user?.id);
-          } else if (user) {
-            return [...old, { id: Date.now(), userId: user.id, postId: post.id }];
-          }
-          return old;
-        }
-      );
-
-      return { previousLikes };
+      return { previousData };
     },
-    onSuccess: (data: { liked: boolean; likes: typeof likes }) => {
-      // Update with the actual server state
-      queryClient.setQueryData(["/api/posts", post.id, "likes"], data.likes);
+    onSuccess: (data: { liked: boolean; count: number }) => {
+      setOptimisticLikeCount(data.count);
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "likes"] });
     },
-    onError: (err, variables, context) => {
-      // Revert on error
-      if (context?.previousLikes) {
-        queryClient.setQueryData(["/api/posts", post.id, "likes"], context.previousLikes);
+    onError: (err, _, context) => {
+      if (context?.previousData) {
+        setOptimisticLikeCount(context.previousData.count);
+        queryClient.setQueryData(["/api/posts", post.id, "likes"], context.previousData);
       }
       toast({
         title: "Error",
         description: "Failed to update like status",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      setTimeout(() => setOptimisticLikeCount(null), 1000);
     }
   });
 
   const commentMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/posts/${post.id}/comments`, { 
-        content: comment, 
-        postId: post.id 
+      const res = await apiRequest("POST", `/api/posts/${post.id}/comments`, {
+        content: comment,
+        postId: post.id,
       });
       return await res.json();
     },
     onMutate: async (newComment) => {
-      // Show comments when posting
       setShowComments(true);
-
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "comments"] });
-
-      // Snapshot the previous value
       const previousComments = queryClient.getQueryData(["/api/posts", post.id, "comments"]);
-
-      // Optimistically add new comment
       const optimisticComment = {
         id: Date.now(),
         postId: post.id,
         userId: user!.id,
         content: comment,
         createdAt: new Date().toISOString(),
-        username: user?.username
+        username: user?.username,
       };
-
       queryClient.setQueryData(
         ["/api/posts", post.id, "comments"],
         (old: CommentWithUsername[] = []) => [...old, optimisticComment]
       );
-
       return { previousComments };
     },
     onSuccess: () => {
@@ -123,7 +106,6 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "comments"] });
     },
     onError: (error, variables, context) => {
-      // Revert on error
       if (context?.previousComments) {
         queryClient.setQueryData(
           ["/api/posts", post.id, "comments"],
@@ -138,8 +120,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     },
   });
 
-  // Filter out invalid comments
-  const validComments = comments.filter(comment => comment.content && comment.content.trim());
+  const validComments = comments.filter((comment) => comment.content && comment.content.trim());
 
   return (
     <Card className="relative">
@@ -166,9 +147,9 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                 <Button variant="ghost" size="icon">
                   <Edit className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => deleteMutation.mutate()}
                 >
                   <Trash className="h-4 w-4" />
@@ -184,10 +165,10 @@ export function PostCard({ post }: { post: PostWithUsername }) {
         {post.type === "room" && post.images && post.images.length > 0 && (
           <div className="flex overflow-x-auto gap-4 mb-4 pb-2">
             {post.images.map((image, i) => (
-              <img 
-                key={i} 
-                src={image} 
-                alt={`Room ${i + 1}`} 
+              <img
+                key={i}
+                src={image}
+                alt={`Room ${i + 1}`}
                 className="rounded-lg object-cover w-72 h-48 flex-none hover:opacity-90 transition-opacity"
               />
             ))}
@@ -216,17 +197,17 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             onClick={() => likeMutation.mutate()}
             disabled={!user || likeMutation.isPending}
           >
-            <Heart 
+            <Heart
               className={`h-4 w-4 transition-colors ${
                 isLiked ? "fill-primary text-primary animate-scale" : ""
-              }`} 
+              }`}
             />
-            {likesLoading ? "..." : likes.length}
+            {likesLoading ? "..." : likeCount}
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="flex gap-2" 
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex gap-2"
             disabled={!user}
             onClick={() => setShowComments(!showComments)}
           >
@@ -276,18 +257,18 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                   onChange={(e) => setComment(e.target.value)}
                   className="flex-1"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey && comment.trim()) {
+                    if (e.key === "Enter" && !e.shiftKey && comment.trim()) {
                       e.preventDefault();
                       commentMutation.mutate();
                     }
                   }}
                 />
-                <Button 
-                  onClick={() => commentMutation.mutate()} 
+                <Button
+                  onClick={() => commentMutation.mutate()}
                   disabled={!comment.trim() || commentMutation.isPending}
                   className="whitespace-nowrap"
                 >
-                  {commentMutation.isPending ? 'Posting...' : 'Post Comment'}
+                  {commentMutation.isPending ? "Posting..." : "Post Comment"}
                 </Button>
               </div>
             )}
