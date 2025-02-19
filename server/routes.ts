@@ -124,17 +124,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/posts/:id/comments", async (req, res) => {
     try {
+      console.log(`Fetching comments for post ${req.params.id}`);
       const comments = await storage.getComments(Number(req.params.id));
+      console.log(`Found ${comments.length} comments`);
+
       const commentsWithUsernames = await Promise.all(
         comments.map(async (comment) => {
           const user = await storage.getUser(comment.userId);
           return { ...comment, username: user?.username };
         })
       );
-      res.json(commentsWithUsernames.sort((a, b) => 
+
+      const sortedComments = commentsWithUsernames.sort((a, b) => 
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      ));
+      );
+
+      res.json(sortedComments);
     } catch (error) {
+      console.error('Error fetching comments:', error);
       res.status(500).json({ error: "Failed to get comments" });
     }
   });

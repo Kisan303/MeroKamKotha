@@ -91,7 +91,8 @@ export class DatabaseStorage implements IStorage {
   async getComments(postId: number): Promise<Comment[]> {
     return await db.select()
       .from(comments)
-      .where(eq(comments.postId, postId));
+      .where(eq(comments.postId, postId))
+      .orderBy(comments.createdAt); // Add explicit ordering
   }
 
   async toggleLike(userId: number, postId: number): Promise<boolean> {

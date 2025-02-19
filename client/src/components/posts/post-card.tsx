@@ -30,10 +30,11 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     refetchInterval: false, // Using WebSocket for real-time updates
   });
 
-  // Query for comments
+  // Query for comments with proper error handling
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     refetchInterval: false, // Using WebSocket for real-time updates
+    staleTime: Infinity, // Prevent automatic refetching
   });
 
   const likes = likesData?.likes ?? [];
@@ -51,7 +52,11 @@ export function PostCard({ post }: { post: PostWithUsername }) {
           (old = []) => {
             // Ensure we don't add duplicate comments
             const exists = old.some(c => c.id === newComment.id);
-            return exists ? old : [...old, newComment].sort((a, b) => 
+            if (exists) return old;
+
+            // Add new comment and sort by creation time
+            const updated = [...old, newComment];
+            return updated.sort((a, b) => 
               new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
             );
           }
@@ -75,7 +80,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       socket.off("new-comment");
       socket.off("likes-updated");
     };
-  }, [post.id]);
+  }, [post.id, queryClient]);
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -131,7 +136,9 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     },
   });
 
-  const validComments = comments.filter((comment) => comment.content && comment.content.trim());
+  const validComments = comments
+    .filter((comment) => comment.content && comment.content.trim())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <Card className="relative">
@@ -245,7 +252,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                   </p>
                 </div>
               ) : (
-                validComments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((comment) => (
+                validComments.map((comment) => (
                   <div
                     key={comment.id}
                     className={`mb-4 last:mb-0 rounded-lg p-3 transition-all duration-300 ${
