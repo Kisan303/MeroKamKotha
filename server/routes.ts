@@ -153,14 +153,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add these new routes in the comments section
   app.patch("/api/comments/:id", requireAuth, async (req, res) => {
     try {
       const commentId = Number(req.params.id);
-      const comment = await storage.getComments(commentId);
+      const comment = await storage.getComment(commentId);
 
       // Check if comment exists and belongs to the user
-      if (!comment || comment[0].userId !== req.user!.id) {
+      if (!comment || comment.userId !== req.user!.id) {
         return res.status(403).json({ error: "Not authorized to edit this comment" });
       }
 
@@ -181,17 +180,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/comments/:id", requireAuth, async (req, res) => {
     try {
       const commentId = Number(req.params.id);
-      const comment = await storage.getComments(commentId);
+      const comment = await storage.getComment(commentId);
 
       // Check if comment exists and belongs to the user
-      if (!comment || comment[0].userId !== req.user!.id) {
+      if (!comment || comment.userId !== req.user!.id) {
         return res.status(403).json({ error: "Not authorized to delete this comment" });
       }
 
       await storage.deleteComment(commentId);
 
       // Emit deletion event to all clients viewing this post
-      io.to(`post-${comment[0].postId}`).emit("comment-deleted", commentId);
+      io.to(`post-${comment.postId}`).emit("comment-deleted", commentId);
 
       res.sendStatus(200);
     } catch (error) {

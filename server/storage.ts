@@ -28,6 +28,7 @@ export interface IStorage {
   deletePost(id: number): Promise<void>;
 
   createComment(userId: number, comment: InsertComment): Promise<Comment>;
+  getComment(id: number): Promise<Comment | undefined>;
   getComments(postId: number): Promise<Comment[]>;
   updateComment(id: number, content: string): Promise<Comment>;
   deleteComment(id: number): Promise<void>;
@@ -105,6 +106,14 @@ export class DatabaseStorage implements IStorage {
       .values({ ...comment, userId })
       .returning();
     return newComment;
+  }
+
+  async getComment(id: number): Promise<Comment | undefined> {
+    const [comment] = await db
+      .select()
+      .from(comments)
+      .where(eq(comments.id, id));
+    return comment;
   }
 
   async getComments(postId: number): Promise<Comment[]> {
