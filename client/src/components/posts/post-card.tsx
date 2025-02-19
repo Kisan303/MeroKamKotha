@@ -99,13 +99,13 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       <CardContent className="pb-3">
         <p className="text-base leading-relaxed mb-4">{post.description}</p>
         {post.type === "room" && post.images && post.images.length > 0 && (
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="flex overflow-x-auto gap-4 mb-4 pb-2">
             {post.images.map((image, i) => (
               <img 
                 key={i} 
                 src={image} 
                 alt={`Room ${i + 1}`} 
-                className="rounded-lg object-cover w-full h-48 hover:opacity-90 transition-opacity"
+                className="rounded-lg object-cover w-72 h-48 flex-none hover:opacity-90 transition-opacity"
               />
             ))}
           </div>
