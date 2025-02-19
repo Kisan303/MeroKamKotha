@@ -27,6 +27,7 @@ export const comments = pgTable("comments", {
   userId: integer("user_id").notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  editedAt: timestamp("edited_at"),
 });
 
 export const likes = pgTable("likes", {
@@ -44,7 +45,8 @@ export const insertPostSchema = createInsertSchema(posts).omit({
 export const insertCommentSchema = createInsertSchema(comments).omit({ 
   id: true,
   userId: true,
-  createdAt: true 
+  createdAt: true,
+  editedAt: true
 });
 
 export type User = typeof users.$inferSelect;

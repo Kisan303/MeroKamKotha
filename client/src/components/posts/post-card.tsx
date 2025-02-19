@@ -319,7 +319,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                       comment.userId === user?.id
                         ? "bg-blue-100 dark:bg-blue-900/30"
                         : "bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-700/50"
-                    }`}
+                    } ${comment.editedAt ? 'animate-highlight' : ''}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -333,6 +333,11 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                         </p>
                         <span className="text-xs text-muted-foreground">
                           {comment.createdAt ? format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a") : ""}
+                          {comment.editedAt && (
+                            <span className="ml-1 italic">
+                              (edited {format(new Date(comment.editedAt), "MMM d 'at' h:mm a")})
+                            </span>
+                          )}
                         </span>
                       </div>
                       {user && comment.userId === user.id && (
