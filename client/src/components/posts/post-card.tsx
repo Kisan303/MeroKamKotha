@@ -21,7 +21,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
 
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
-    enabled: showComments, // Only fetch comments when comments section is shown
+    enabled: showComments,
   });
 
   const { data: likes = [], isLoading: likesLoading } = useQuery<{ id: number; userId: number }[]>({
@@ -57,6 +57,9 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
   });
+
+  // Filter out invalid comments
+  const validComments = comments.filter(comment => comment.content && comment.content.trim());
 
   return (
     <Card className="relative">
@@ -148,7 +151,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             onClick={() => setShowComments(!showComments)}
           >
             <MessageSquare className="h-4 w-4" />
-            {commentsLoading ? "..." : comments.length}
+            {commentsLoading ? "..." : validComments.length}
           </Button>
         </div>
 
@@ -159,7 +162,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                 <div className="flex items-center justify-center h-full">
                   <p className="text-sm text-muted-foreground">Loading comments...</p>
                 </div>
-              ) : comments.length === 0 ? (
+              ) : validComments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-2">
                   <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
                   <p className="text-sm text-muted-foreground text-center">
@@ -170,13 +173,13 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                   </p>
                 </div>
               ) : (
-                comments.map((comment) => (
+                validComments.map((comment) => (
                   <div key={comment.id} className="mb-4 last:mb-0 hover:bg-muted/50 rounded-lg p-2 transition-colors">
                     <div className="flex items-center gap-2">
                       <UserCircle className="h-4 w-4 text-muted-foreground" />
                       <p className="text-sm font-medium">{comment.username || "Unknown"}</p>
                       <span className="text-xs text-muted-foreground">
-                        {format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                        {comment.createdAt ? format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a") : ""}
                       </span>
                     </div>
                     <p className="text-sm mt-1 pl-6">{comment.content}</p>
