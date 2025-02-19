@@ -98,7 +98,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Likes
   app.post("/api/posts/:id/likes", requireAuth, async (req, res) => {
     const liked = await storage.toggleLike(req.user!.id, Number(req.params.id));
-    res.json({ liked });
+    const likes = await storage.getLikes(Number(req.params.id));
+    res.json({ liked, likes });
   });
 
   app.get("/api/posts/:id/likes", async (req, res) => {

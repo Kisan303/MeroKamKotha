@@ -38,7 +38,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const likeMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/posts/${post.id}/likes`);
-      return res.json();
+      return await res.json();
     },
     onMutate: async () => {
       // Cancel any outgoing refetches 
@@ -62,6 +62,10 @@ export function PostCard({ post }: { post: PostWithUsername }) {
 
       return { previousLikes };
     },
+    onSuccess: (data: { liked: boolean; likes: typeof likes }) => {
+      // Update with the actual server state
+      queryClient.setQueryData(["/api/posts", post.id, "likes"], data.likes);
+    },
     onError: (err, variables, context) => {
       // Revert on error
       if (context?.previousLikes) {
@@ -72,11 +76,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
         description: "Failed to update like status",
         variant: "destructive",
       });
-    },
-    onSettled: () => {
-      // Always refetch after mutation completes (success or error)
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "likes"] });
-    },
+    }
   });
 
   const commentMutation = useMutation({
