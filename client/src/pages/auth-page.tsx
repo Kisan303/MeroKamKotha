@@ -15,7 +15,7 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (user) setLocation("/");
+    if (user) setLocation("/profile");
   }, [user, setLocation]);
 
   const loginForm = useForm<InsertUser>({
@@ -23,7 +23,7 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
-      fullname: "", // Add this but it won't be used in login
+      fullname: "",
     },
   });
 
@@ -36,9 +36,13 @@ export default function AuthPage() {
     },
   });
 
+  const onLoginSuccess = () => {
+    setLocation("/profile");
+  };
+
   const onRegisterSuccess = () => {
     const { username, password } = registerForm.getValues();
-    loginMutation.mutate({ username, password });
+    loginMutation.mutate({ username, password }, { onSuccess: onLoginSuccess });
   };
 
   return (
@@ -59,7 +63,7 @@ export default function AuthPage() {
 
               <TabsContent value="login">
                 <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
+                  <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data, { onSuccess: onLoginSuccess }))} className="space-y-4">
                     <FormField
                       control={loginForm.control}
                       name="username"
