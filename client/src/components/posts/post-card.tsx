@@ -14,14 +14,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { Bookmark, MessageSquare, Clock, UserCircle } from "lucide-react";
+import { Bookmark, MessageSquare, Clock, UserCircle, MoreVertical, Edit, Trash } from "lucide-react";
 import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { socket } from "@/lib/socket";
 import { CommentThread } from './comment-thread';
+import { Input } from "@/components/ui/input";
+import { PostForm } from "./post-form";
 
 type BookmarkResponse = { bookmarked: boolean };
 type PostWithUsername = Post & { username?: string };
@@ -39,6 +48,8 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showUnsaveConfirm, setShowUnsaveConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   // Fetch bookmark status for this specific post
   const { data: bookmarkData } = useQuery<BookmarkResponse>({
@@ -170,6 +181,26 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/posts/${post.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      toast({
+        title: "Success",
+        description: "Post deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Organize comments into a tree structure
   const topLevelComments = comments.filter(comment => !comment.parentId);
 
@@ -196,9 +227,33 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
               {post.title}
             </h2>
           </div>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            {format(new Date(post.createdAt), "PPp")}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              {format(new Date(post.createdAt), "PPp")}
+            </div>
+            {user && post.userId === user.id && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="text-destructive"
+                  >
+                    <Trash className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -349,6 +404,39 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
           </>
         )}
       </CardFooter>
+
+      {/* Add Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <PostForm initialData={post} onSuccess={() => setShowEditDialog(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Delete Confirmation */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Post</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this post? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                deleteMutation.mutate();
+                setShowDeleteConfirm(false);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Keep existing unsave confirmation dialog... */}
     </Card>
   );
 }

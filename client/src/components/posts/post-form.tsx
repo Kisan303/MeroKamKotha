@@ -32,18 +32,18 @@ import {
 } from "@/components/ui/select";
 import { DialogTitle, DialogClose } from "@/components/ui/dialog";
 
-export function PostForm({ post, onSuccess }: {
-  post?: InsertPost & { id?: number };
+export function PostForm({ initialData, onSuccess }: {
+  initialData?: InsertPost & { id?: number };
   onSuccess?: () => void;
 }) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [previews, setPreviews] = useState<string[]>(initialData?.images || []);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const form = useForm<InsertPost>({
     resolver: zodResolver(insertPostSchema),
-    defaultValues: post || {
+    defaultValues: initialData || {
       type: "room",
       title: "",
       description: "",
@@ -100,7 +100,7 @@ export function PostForm({ post, onSuccess }: {
 
   const updateMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
-      await apiRequest("PATCH", `/api/posts/${post?.id}`, data);
+      await apiRequest("PATCH", `/api/posts/${initialData?.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -131,7 +131,7 @@ export function PostForm({ post, onSuccess }: {
   };
 
   const onSubmit = (data: InsertPost) => {
-    if (post?.id) {
+    if (initialData?.id) {
       updateMutation.mutate(data);
     } else {
       createMutation.mutate(data);
@@ -144,7 +144,7 @@ export function PostForm({ post, onSuccess }: {
     <ScrollArea className="h-[80vh] w-full">
       <div className="space-y-6 px-6">
         <DialogTitle className="text-xl font-semibold">
-          {post?.id ? "Edit Post" : "Create New Post"}
+          {initialData?.id ? "Edit Post" : "Create New Post"}
         </DialogTitle>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -315,7 +315,7 @@ export function PostForm({ post, onSuccess }: {
                 {(createMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {post?.id ? "Update" : "Create"} Post
+                {initialData?.id ? "Update" : "Create"} Post
               </Button>
             </div>
           </form>
