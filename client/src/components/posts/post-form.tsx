@@ -10,10 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, X, ImagePlus } from "lucide-react";
-import {
-  ScrollArea,
-  ScrollBar,
-} from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Form,
   FormControl,
@@ -116,7 +113,7 @@ export function PostForm({ initialData, onSuccess }: {
         title: "Success",
         description: "Post updated successfully",
       });
-      closeButtonRef.current?.click(); // Automatically close the dialog
+      closeButtonRef.current?.click();
       onSuccess?.();
     },
   });
@@ -135,7 +132,9 @@ export function PostForm({ initialData, onSuccess }: {
       return;
     }
 
-    const newPreviews: string[] = [];
+    // Clear previous previews if this is a new selection
+    setPreviews([]);
+
     Array.from(files).forEach((file) => {
       // Validate file size
       if (file.size > 5 * 1024 * 1024) {
@@ -150,22 +149,39 @@ export function PostForm({ initialData, onSuccess }: {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
-          newPreviews.push(e.target.result as string);
-          setPreviews([...newPreviews]);
+          setPreviews(prev => [...prev, e.target.result as string]);
         }
       };
       reader.readAsDataURL(file);
     });
   };
 
-  const onSubmit = (data: InsertPost) => {
+  const onSubmit = async (data: InsertPost) => {
+    // Validate price for room posts
+    if (data.type === "room" && (!data.price || data.price <= 0)) {
+      form.setError("price", {
+        type: "manual",
+        message: "Price is required for room posts"
+      });
+      return;
+    }
+
+    // Validate images for room posts
+    if (data.type === "room" && (!fileInputRef.current?.files || fileInputRef.current.files.length === 0)) {
+      toast({
+        title: "Error",
+        description: "At least one image is required for room posts",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (initialData?.id) {
       updateMutation.mutate(data);
     } else {
       createMutation.mutate(data);
     }
   };
-
 
   return (
     <ScrollArea className="h-[80vh] w-full">
@@ -250,13 +266,21 @@ export function PostForm({ initialData, onSuccess }: {
                           value={field.value ?? ""}
                           onChange={(e) => {
                             const value = e.target.value;
+                            if (postType === "room" && (!value || Number(value) <= 0)) {
+                              form.setError("price", {
+                                type: "manual",
+                                message: "Price is required for room posts"
+                              });
+                            } else {
+                              form.clearErrors("price");
+                            }
                             field.onChange(value ? Number(value) : null);
                           }}
                         />
                       </div>
                     </FormControl>
                     <FormDescription>
-                      {postType === "room" ? "Monthly rent amount" : "Salary (optional)"}
+                      {postType === "room" ? "Monthly rent amount (required)" : "Salary (optional)"}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
