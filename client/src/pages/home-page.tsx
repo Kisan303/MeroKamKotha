@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/ui/layout";
@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { socket } from "@/lib/socket";
+import { queryClient } from "@/lib/queryClient";
 import type { Post } from "@shared/schema";
 
 type PostWithUsername = Post & { username?: string };
@@ -21,6 +23,35 @@ export default function HomePage() {
   const { data: posts = [] } = useQuery<PostWithUsername[]>({
     queryKey: ["/api/posts"],
   });
+
+  useEffect(() => {
+    // Listen for new posts
+    socket.on("new-post", (newPost: PostWithUsername) => {
+      console.log("Received new post:", newPost);
+      queryClient.setQueryData<PostWithUsername[]>(
+        ["/api/posts"],
+        (old = []) => {
+          const exists = old.some(p => p.id === newPost.id);
+          if (exists) return old;
+          return [newPost, ...old];
+        }
+      );
+    });
+
+    // Listen for deleted posts
+    socket.on("post-deleted", (deletedPostId: number) => {
+      console.log("Post deleted:", deletedPostId);
+      queryClient.setQueryData<PostWithUsername[]>(
+        ["/api/posts"],
+        (old = []) => old.filter(post => post.id !== deletedPostId)
+      );
+    });
+
+    return () => {
+      socket.off("new-post");
+      socket.off("post-deleted");
+    };
+  }, []);
 
   const filteredPosts = posts.filter((post) => {
     const matchesSearch = post.title.toLowerCase().includes(search.toLowerCase()) ||

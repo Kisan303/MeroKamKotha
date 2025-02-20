@@ -25,7 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Socket.IO connection handling
+  // Setup Socket.IO connection handling
   io.on("connection", (socket) => {
     console.log("Client connected");
 
@@ -77,7 +77,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     const user = await storage.getUser(post.userId);
-    res.json({ ...post, username: user?.username });
+    const postWithUser = { ...post, username: user?.username };
+
+    // Emit new post to all connected clients
+    io.emit("new-post", postWithUser);
+
+    res.json(postWithUser);
   });
 
   app.patch("/api/posts/:id", requireAuth, async (req, res) => {
@@ -103,6 +108,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (post.userId !== req.user!.id) return res.sendStatus(403);
 
     await storage.deletePost(post.id);
+
+    // Emit post deletion to all connected clients
+    io.emit("post-deleted", post.id);
+
     res.sendStatus(200);
   });
 
