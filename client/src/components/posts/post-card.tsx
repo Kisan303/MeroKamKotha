@@ -25,7 +25,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const [showComments, setShowComments] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
 
-  // Fetch bookmark status
+  // Fetch bookmark status for this specific post
   const { data: bookmarkData } = useQuery<BookmarkResponse>({
     queryKey: ["/api/posts", post.id, "bookmark"],
     enabled: !!user,
@@ -47,7 +47,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     staleTime: 1000 * 60,
   });
 
-  // Update isBookmarked when bookmarkData changes
+  // Update isBookmarked when bookmarkData changes for this specific post
   useEffect(() => {
     if (bookmarkData) {
       setIsBookmarked(bookmarkData.bookmarked);
@@ -55,16 +55,20 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   }, [bookmarkData]);
 
   useEffect(() => {
+    // Join room for this specific post
     socket.emit("join-post", post.id.toString());
     console.log(`Joined post room: ${post.id}`);
 
-    socket.on("bookmark-updated", (data: { bookmarked: boolean }) => {
-      console.log('Received bookmark update:', data);
-      queryClient.setQueryData<BookmarkResponse>(
-        ["/api/posts", post.id, "bookmark"],
-        { bookmarked: data.bookmarked }
-      );
-      setIsBookmarked(data.bookmarked);
+    // Handle bookmark updates for this specific post only
+    socket.on("bookmark-updated", (data: { postId: number, bookmarked: boolean }) => {
+      if (data.postId === post.id) {
+        console.log(`Received bookmark update for post ${post.id}:`, data);
+        queryClient.setQueryData<BookmarkResponse>(
+          ["/api/posts", post.id, "bookmark"],
+          { bookmarked: data.bookmarked }
+        );
+        setIsBookmarked(data.bookmarked);
+      }
     });
 
     socket.on("new-comment", (newComment: CommentWithUsername) => {
@@ -81,29 +85,11 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       }
     });
 
-    socket.on("comment-updated", (updatedComment: CommentWithUsername) => {
-      if (updatedComment.postId === post.id) {
-        queryClient.setQueryData<CommentWithUsername[]>(
-          ["/api/posts", post.id, "comments"],
-          (old = []) => old.map(c => c.id === updatedComment.id ? updatedComment : c)
-        );
-      }
-    });
-
-    socket.on("comment-deleted", (deletedCommentId: number) => {
-      queryClient.setQueryData<CommentWithUsername[]>(
-        ["/api/posts", post.id, "comments"],
-        (old = []) => old.filter(c => c.id !== deletedCommentId)
-      );
-    });
-
     return () => {
       console.log(`Leaving post room: ${post.id}`);
       socket.emit("leave-post", post.id.toString());
       socket.off("new-comment");
       socket.off("bookmark-updated");
-      socket.off("comment-updated");
-      socket.off("comment-deleted");
     };
   }, [post.id, queryClient]);
 

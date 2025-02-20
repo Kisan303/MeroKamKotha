@@ -214,7 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Toggling bookmark for post ${postId} by user ${userId}`);
       const isBookmarked = await storage.toggleBookmark(userId, postId);
       const bookmarks = await storage.getBookmarks(userId);
-      const response = { bookmarked: isBookmarked, count: bookmarks.length };
+      const response = { bookmarked: isBookmarked, count: bookmarks.length, postId };
 
       console.log(`Bookmark status updated:`, response);
 
@@ -243,6 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add endpoint to get bookmarked posts for user profile
   app.get("/api/user/bookmarks", requireAuth, async (req, res) => {
     try {
       const bookmarks = await storage.getBookmarks(req.user!.id);
