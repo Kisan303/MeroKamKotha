@@ -19,6 +19,7 @@ export const posts = pgTable("posts", {
   location: text("location").notNull(),
   images: text("images").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  editedAt: timestamp("edited_at"),
 });
 
 export const comments = pgTable("comments", {
@@ -48,7 +49,8 @@ export const insertUserSchema = createInsertSchema(users);
 export const insertPostSchema = createInsertSchema(posts).omit({ 
   id: true,
   userId: true,
-  createdAt: true 
+  createdAt: true,
+  editedAt: true
 });
 export const insertCommentSchema = createInsertSchema(comments).omit({ 
   id: true,

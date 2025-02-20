@@ -231,6 +231,11 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />
               {format(new Date(post.createdAt), "PPp")}
+              {post.editedAt && (
+                <span className="text-xs text-muted-foreground ml-1">
+                  (edited {format(new Date(post.editedAt), "PPp")})
+                </span>
+              )}
             </div>
             {user && post.userId === user.id && (
               <DropdownMenu>

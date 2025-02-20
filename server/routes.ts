@@ -88,6 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const data = {
       ...req.body,
       price: req.body.price ? Number(req.body.price) : null,
+      editedAt: new Date(), // Add editedAt timestamp
     };
 
     const parsed = insertPostSchema.partial().parse(data);
@@ -247,11 +248,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bookmarkedPosts = await Promise.all(
         bookmarks.map(async (bookmark) => {
           const post = await storage.getPost(bookmark.postId);
+          // Skip if post is deleted
           if (!post) return null;
           const user = await storage.getUser(post.userId);
           return { ...post, username: user?.username };
         })
       );
+      // Filter out null values (deleted posts)
       res.json(bookmarkedPosts.filter(Boolean));
     } catch (error) {
       res.status(500).json({ error: "Failed to get bookmarked posts" });
