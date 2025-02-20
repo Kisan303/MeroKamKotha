@@ -53,8 +53,14 @@ export function PostForm({ initialData, onSuccess }: {
     },
   });
 
+  const postType = form.watch("type");
+
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
+      if (postType === "room" && (!fileInputRef.current?.files || fileInputRef.current.files.length === 0)) {
+        throw new Error("At least one image is required for room posts");
+      }
+
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
         if (key !== "images") {
@@ -77,6 +83,8 @@ export function PostForm({ initialData, onSuccess }: {
       if (!res.ok) {
         throw new Error("Failed to create post");
       }
+
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -86,7 +94,7 @@ export function PostForm({ initialData, onSuccess }: {
       });
       form.reset();
       setPreviews([]);
-      closeButtonRef.current?.click(); // Automatically close the dialog
+      closeButtonRef.current?.click();
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -117,8 +125,28 @@ export function PostForm({ initialData, onSuccess }: {
     const files = e.target.files;
     if (!files) return;
 
+    // Validate file count
+    if (files.length > 5) {
+      toast({
+        title: "Error",
+        description: "Maximum 5 images allowed",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newPreviews: string[] = [];
     Array.from(files).forEach((file) => {
+      // Validate file size
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: `File ${file.name} exceeds 5MB limit`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -138,7 +166,6 @@ export function PostForm({ initialData, onSuccess }: {
     }
   };
 
-  const postType = form.watch("type");
 
   return (
     <ScrollArea className="h-[80vh] w-full">
@@ -211,19 +238,26 @@ export function PostForm({ initialData, onSuccess }: {
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price (Optional)</FormLabel>
+                    <FormLabel>{postType === "room" ? "Price (Required)" : "Price (Optional)"}</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Enter price"
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          field.onChange(value ? Number(value) : null);
-                        }}
-                      />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <Input
+                          type="number"
+                          placeholder="Enter price"
+                          className="pl-7"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(value ? Number(value) : null);
+                          }}
+                        />
+                      </div>
                     </FormControl>
+                    <FormDescription>
+                      {postType === "room" ? "Monthly rent amount" : "Salary (optional)"}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -239,6 +273,9 @@ export function PostForm({ initialData, onSuccess }: {
                       <Input placeholder="Enter location" {...field} />
                     </FormControl>
                     <FormMessage />
+                    <FormDescription>
+                      City, State or full address
+                    </FormDescription>
                   </FormItem>
                 )}
               />
@@ -246,7 +283,7 @@ export function PostForm({ initialData, onSuccess }: {
 
             {postType === "room" && (
               <FormItem>
-                <FormLabel>Images (Optional)</FormLabel>
+                <FormLabel>Images (Required)</FormLabel>
                 <FormControl>
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
@@ -299,8 +336,11 @@ export function PostForm({ initialData, onSuccess }: {
                   </div>
                 </FormControl>
                 <FormDescription>
-                  You can upload up to 5 images. Each image must be less than 5MB.
+                  You must upload 1-5 images for room posts. Each image must be less than 5MB.
                 </FormDescription>
+                {postType === "room" && previews.length === 0 && (
+                  <FormMessage>At least one image is required for room posts</FormMessage>
+                )}
               </FormItem>
             )}
 

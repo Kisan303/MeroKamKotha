@@ -283,7 +283,7 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
           </span>
           {post.price && (
             <span className="flex items-center gap-1">
-              💰 ${post.price}
+              💰 ${post.price.toLocaleString()}
             </span>
           )}
         </div>
