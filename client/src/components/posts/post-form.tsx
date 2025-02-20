@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { uploadMultipleImages } from "@/lib/uploadImage";
 
 export function PostForm({ initialData, onSuccess }: {
   initialData?: InsertPost & { id?: number };
@@ -36,6 +37,7 @@ export function PostForm({ initialData, onSuccess }: {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.images || []);
+  const [isUploading, setIsUploading] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const form = useForm<InsertPost>({
@@ -96,46 +98,33 @@ export function PostForm({ initialData, onSuccess }: {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
-      console.log("Creating post with data:", data);
+      try {
+        setIsUploading(true);
+        let imageUrls: string[] = [];
 
-      const formData = new FormData();
-
-      // Add all form fields to formData
-      Object.entries(data).forEach(([key, value]) => {
-        if (key !== "images") {
-          formData.append(key, value?.toString() || "");
+        // For room posts, upload images to Firebase
+        if (data.type === "room" && previews.length > 0) {
+          imageUrls = await uploadMultipleImages(previews);
+          console.log("Uploaded image URLs:", imageUrls);
         }
-      });
 
-      // For room posts, either use file input or existing images
-      if (postType === "room") {
-        if (fileInputRef.current?.files?.length) {
-          // If new files are selected, use those
-          Array.from(fileInputRef.current.files).forEach((file) => {
-            formData.append("images", file);
-          });
-        } else if (previews.length > 0) {
-          // If using existing images (e.g. when editing)
-          previews.forEach((preview) => {
-            formData.append("images", preview);
-          });
+        // Create post with image URLs
+        const res = await apiRequest("POST", "/api/posts", {
+          ...data,
+          images: imageUrls
+        });
+
+        if (!res.ok) {
+          throw new Error(await res.text() || "Failed to create post");
         }
+
+        return await res.json();
+      } catch (error) {
+        console.error("Error in create mutation:", error);
+        throw error;
+      } finally {
+        setIsUploading(false);
       }
-
-      console.log("Sending formData:", Object.fromEntries(formData));
-
-      const res = await fetch("/api/posts", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Failed to create post");
-      }
-
-      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -368,12 +357,12 @@ export function PostForm({ initialData, onSuccess }: {
               </DialogClose>
               <Button
                 type="submit"
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || isUploading}
               >
-                {createMutation.isPending && (
+                {(createMutation.isPending || isUploading) && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {initialData?.id ? "Update" : "Create"} Post
+                {isUploading ? "Uploading Images..." : createMutation.isPending ? "Creating Post..." : "Create Post"}
               </Button>
             </div>
           </form>
