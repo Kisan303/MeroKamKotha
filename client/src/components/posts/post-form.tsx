@@ -72,12 +72,10 @@ export function PostForm({ initialData, onSuccess }: {
         });
       }
 
-      // Add existing images if they're from the initial data
-      if (previews.length > 0 && initialData?.images) {
+      // Add existing images from previews
+      if (data.type === "room" && previews.length > 0) {
         previews.forEach((preview) => {
-          if (initialData.images?.includes(preview)) {
-            formData.append("existing_images", preview);
-          }
+          formData.append("images", preview);
         });
       }
 
@@ -189,9 +187,14 @@ export function PostForm({ initialData, onSuccess }: {
   const onSubmit = async (data: InsertPost) => {
     console.log("Form submitted with data:", data);
 
-    // For room posts, add the images from previews
-    if (postType === "room") {
-      data.images = previews;
+    // For room posts, validate images
+    if (postType === "room" && previews.length === 0) {
+      toast({
+        title: "Error",
+        description: "At least one image is required for room posts",
+        variant: "destructive",
+      });
+      return;
     }
 
     try {

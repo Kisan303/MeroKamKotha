@@ -61,28 +61,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/posts", requireAuth, upload.array("images", 5), async (req, res) => {
-    const data = {
-      ...req.body,
-      price: req.body.price ? Number(req.body.price) : null,
-    };
+    try {
+      console.log("Creating post with body:", req.body);
+      console.log("Files received:", req.files);
 
-    const parsed = insertPostSchema.parse(data);
-    const images = (req.files as Express.Multer.File[])?.map(
-      file => `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
-    ) || [];
+      const data = {
+        ...req.body,
+        price: req.body.price ? Number(req.body.price) : null,
+      };
 
-    const post = await storage.createPost(req.user!.id, {
-      ...parsed,
-      images,
-    });
+      const parsed = insertPostSchema.parse(data);
+      const images = (req.files as Express.Multer.File[])?.map(
+        file => `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
+      ) || [];
 
-    const user = await storage.getUser(post.userId);
-    const postWithUser = { ...post, username: user?.username };
+      console.log("Creating post with parsed data:", { ...parsed, images });
 
-    // Emit new post to all connected clients
-    io.emit("new-post", postWithUser);
+      const post = await storage.createPost(req.user!.id, {
+        ...parsed,
+        images,
+      });
 
-    res.json(postWithUser);
+      const user = await storage.getUser(post.userId);
+      const postWithUser = { ...post, username: user?.username };
+
+      // Emit new post to all connected clients
+      io.emit("new-post", postWithUser);
+
+      res.json(postWithUser);
+    } catch (error) {
+      console.error("Error creating post:", error);
+      res.status(400).json({ error: error.message });
+    }
   });
 
   app.patch("/api/posts/:id", requireAuth, async (req, res) => {
