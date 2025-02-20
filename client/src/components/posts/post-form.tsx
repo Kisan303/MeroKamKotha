@@ -97,22 +97,32 @@ export function PostForm({ initialData, onSuccess }: {
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
       try {
+        console.log("Starting post creation with data:", data);
+
         // For room posts, validate images
         if (data.type === "room" && (!previews || previews.length === 0)) {
           throw new Error("At least one image is required for room posts");
         }
 
         // Create post with base64 images
-        const res = await apiRequest("POST", "/api/posts", {
+        const postData = {
           ...data,
-          images: previews
-        });
+          images: data.type === "room" ? previews : undefined
+        };
+
+        console.log("Sending post data:", postData);
+
+        const res = await apiRequest("POST", "/api/posts", postData);
 
         if (!res.ok) {
-          throw new Error(await res.text() || "Failed to create post");
+          const errorText = await res.text();
+          console.error("Server response error:", errorText);
+          throw new Error(errorText || "Failed to create post");
         }
 
-        return await res.json();
+        const result = await res.json();
+        console.log("Post created successfully:", result);
+        return result;
       } catch (error) {
         console.error("Error in create mutation:", error);
         throw error;
@@ -156,10 +166,7 @@ export function PostForm({ initialData, onSuccess }: {
     }
 
     try {
-      await createMutation.mutateAsync({
-        ...data,
-        images: previews
-      });
+      await createMutation.mutateAsync(data);
     } catch (error) {
       console.error("Submit error:", error);
     }

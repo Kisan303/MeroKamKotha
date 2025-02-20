@@ -4,12 +4,6 @@ import { Server as SocketIOServer } from "socket.io";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
-//import multer from "multer"; //Removed multer import
-
-//const upload = multer({ //Removed multer configuration
-//  storage: multer.memoryStorage(),
-//  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-//});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -62,10 +56,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/posts", requireAuth, async (req, res) => {
     try {
-      console.log("Creating post with body:", req.body);
+      console.log("Creating post with data type:", req.body.type);
+      console.log("Image data present:", !!req.body.images);
 
       // For room posts, validate images
-      if (req.body.type === "room" && (!req.body.images || req.body.images.length === 0)) {
+      if (req.body.type === "room" && (!req.body.images || !Array.isArray(req.body.images) || req.body.images.length === 0)) {
+        console.log("Image validation failed for room post");
         return res.status(400).json({ error: "At least one image is required for room posts" });
       }
 
@@ -74,8 +70,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         price: req.body.price ? Number(req.body.price) : null,
       };
 
+      console.log("Data before parsing:", data);
+
       const parsed = insertPostSchema.parse(data);
-      console.log("Creating post with parsed data:", parsed);
+      console.log("Parsed data:", parsed);
 
       const post = await storage.createPost(req.user!.id, parsed);
       console.log("Post created:", post);
@@ -89,7 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(postWithUser);
     } catch (error) {
       console.error("Error creating post:", error);
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ error: error.message || "Failed to create post" });
     }
   });
 
