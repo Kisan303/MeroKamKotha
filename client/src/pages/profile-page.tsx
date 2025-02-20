@@ -6,8 +6,9 @@ import { PostForm } from "@/components/posts/post-form";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Bookmark } from "lucide-react";
 import type { Post } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type PostWithUsername = Post & { username?: string };
 
@@ -16,6 +17,11 @@ export default function ProfilePage() {
 
   const { data: posts = [] } = useQuery<PostWithUsername[]>({
     queryKey: ["/api/posts"],
+  });
+
+  const { data: bookmarkedPosts = [] } = useQuery<PostWithUsername[]>({
+    queryKey: ["/api/user/bookmarks"],
+    enabled: !!user,
   });
 
   const userPosts = posts.filter(post => post.userId === user?.id);
@@ -67,32 +73,65 @@ export default function ProfilePage() {
           </Card>
         </div>
 
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Your Posts</h2>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <PlusCircle className="h-4 w-4" />
-                Create New Post
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <PostForm />
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Tabs defaultValue="posts" className="w-full">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="posts">Your Posts</TabsTrigger>
+            <TabsTrigger value="bookmarks" className="flex items-center gap-2">
+              <Bookmark className="h-4 w-4" />
+              Saved Posts ({bookmarkedPosts.length})
+            </TabsTrigger>
+          </TabsList>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {userPosts.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
-          {userPosts.length === 0 && (
-            <Card className="col-span-full p-8 text-center">
-              <p className="text-muted-foreground">You haven't created any posts yet.</p>
-              <p className="text-muted-foreground">Click the 'Create New Post' button to get started!</p>
-            </Card>
-          )}
-        </div>
+          <TabsContent value="posts" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Your Posts</h2>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <PlusCircle className="h-4 w-4" />
+                    Create New Post
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <PostForm />
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {userPosts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+              {userPosts.length === 0 && (
+                <Card className="col-span-full p-8 text-center">
+                  <p className="text-muted-foreground">You haven't created any posts yet.</p>
+                  <p className="text-muted-foreground">Click the 'Create New Post' button to get started!</p>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="bookmarks" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Bookmark className="h-5 w-5" />
+                Saved Posts
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {bookmarkedPosts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+              {bookmarkedPosts.length === 0 && (
+                <Card className="col-span-full p-8 text-center">
+                  <p className="text-muted-foreground">You haven't saved any posts yet.</p>
+                  <p className="text-muted-foreground">Click the 'Save' button on posts to add them to your bookmarks!</p>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
