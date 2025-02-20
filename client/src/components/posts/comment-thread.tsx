@@ -2,7 +2,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { UserCircle, MoreVertical, Edit, Trash, Check, X, MessageSquare } from "lucide-react";
+import { UserCircle, MoreVertical, Edit, Trash, Check, X, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Comment, User } from "@shared/schema";
@@ -41,6 +41,7 @@ export function CommentThread({ comment, replies, currentUser, postId, level = 0
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState("");
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
+  const [showReplies, setShowReplies] = useState(false);
 
   const replyMutation = useMutation({
     mutationFn: async () => {
@@ -106,6 +107,7 @@ export function CommentThread({ comment, replies, currentUser, postId, level = 0
   // Only allow nesting up to 3 levels
   const canReply = level < 3;
   const nestedReplies = replies.filter(reply => reply.parentId === comment.id);
+  const hasReplies = nestedReplies.length > 0;
 
   return (
     <div className={`relative ${level > 0 ? 'ml-6 mt-2' : 'mt-4'}`}>
@@ -202,17 +204,29 @@ export function CommentThread({ comment, replies, currentUser, postId, level = 0
             }`}>
               {comment.content}
             </p>
-            {currentUser && canReply && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2"
-                onClick={() => setIsReplying(!isReplying)}
-              >
-                <MessageSquare className="h-3 w-3 mr-1" />
-                Reply
-              </Button>
-            )}
+            <div className="flex gap-2 mt-2">
+              {currentUser && canReply && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsReplying(!isReplying)}
+                >
+                  <MessageSquare className="h-3 w-3 mr-1" />
+                  Reply
+                </Button>
+              )}
+              {hasReplies && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowReplies(!showReplies)}
+                  className="text-muted-foreground"
+                >
+                  {showReplies ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
+                  {showReplies ? "Hide" : "Show"} {nestedReplies.length} {nestedReplies.length === 1 ? "Reply" : "Replies"}
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
@@ -248,7 +262,7 @@ export function CommentThread({ comment, replies, currentUser, postId, level = 0
       </div>
 
       {/* Nested replies */}
-      {nestedReplies.map((reply) => (
+      {showReplies && nestedReplies.map((reply) => (
         <CommentThread
           key={reply.id}
           comment={reply}
