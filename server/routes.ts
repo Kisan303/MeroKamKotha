@@ -99,7 +99,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const parsed = insertPostSchema.partial().parse(data);
     const updated = await storage.updatePost(post.id, parsed);
     const user = await storage.getUser(updated.userId);
-    res.json({ ...updated, username: user?.username });
+    const postWithUser = { ...updated, username: user?.username };
+
+    // Emit post update to all connected clients
+    io.emit("post-updated", postWithUser);
+
+    res.json(postWithUser);
   });
 
   app.delete("/api/posts/:id", requireAuth, async (req, res) => {

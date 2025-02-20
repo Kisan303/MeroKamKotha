@@ -46,12 +46,35 @@ export const bookmarks = pgTable("bookmarks", {
 });
 
 export const insertUserSchema = createInsertSchema(users);
-export const insertPostSchema = createInsertSchema(posts).omit({ 
-  id: true,
-  userId: true,
-  createdAt: true,
-  editedAt: true
-});
+export const insertPostSchema = createInsertSchema(posts)
+  .omit({ 
+    id: true,
+    userId: true,
+    createdAt: true,
+    editedAt: true
+  })
+  .extend({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().min(1, "Description is required"),
+    location: z.string().min(1, "Location is required"),
+    type: z.enum(["room", "job"]),
+    price: z.number().nullable(),
+    images: z.array(z.string()).optional(),
+  })
+  .refine(
+    (data) => {
+      // For room posts, images are required
+      if (data.type === "room") {
+        return (data.images && data.images.length > 0 && data.price !== null);
+      }
+      // For job posts, price is optional
+      return true;
+    },
+    {
+      message: "For room posts, images and price are required",
+      path: ["images"],
+    }
+  );
 export const insertCommentSchema = createInsertSchema(comments).omit({ 
   id: true,
   userId: true,

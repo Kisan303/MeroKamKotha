@@ -38,6 +38,17 @@ export default function HomePage() {
       );
     });
 
+    // Listen for updated posts
+    socket.on("post-updated", (updatedPost: PostWithUsername) => {
+      console.log("Post updated:", updatedPost);
+      queryClient.setQueryData<PostWithUsername[]>(
+        ["/api/posts"],
+        (old = []) => old?.map(post => 
+          post.id === updatedPost.id ? updatedPost : post
+        ) || []
+      );
+    });
+
     // Listen for deleted posts
     socket.on("post-deleted", (deletedPostId: number) => {
       console.log("Post deleted:", deletedPostId);
@@ -49,11 +60,17 @@ export default function HomePage() {
 
     return () => {
       socket.off("new-post");
+      socket.off("post-updated");
       socket.off("post-deleted");
     };
   }, []);
 
-  const filteredPosts = posts.filter((post) => {
+  // Sort posts by newest first
+  const sortedPosts = [...posts].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  const filteredPosts = sortedPosts.filter((post) => {
     const matchesSearch = post.title.toLowerCase().includes(search.toLowerCase()) ||
                        post.description.toLowerCase().includes(search.toLowerCase()) ||
                        post.location.toLowerCase().includes(search.toLowerCase());
