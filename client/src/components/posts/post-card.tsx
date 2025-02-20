@@ -59,18 +59,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     socket.emit("join-post", post.id.toString());
     console.log(`Joined post room: ${post.id}`);
 
-    // Handle bookmark updates for this specific post only
-    socket.on("bookmark-updated", (data: { postId: number, bookmarked: boolean }) => {
-      if (data.postId === post.id) {
-        console.log(`Received bookmark update for post ${post.id}:`, data);
-        queryClient.setQueryData<BookmarkResponse>(
-          ["/api/posts", post.id, "bookmark"],
-          { bookmarked: data.bookmarked }
-        );
-        setIsBookmarked(data.bookmarked);
-      }
-    });
-
+    // Only listen for comment updates
     socket.on("new-comment", (newComment: CommentWithUsername) => {
       if (newComment.postId === post.id) {
         console.log('Received new comment:', newComment);
@@ -89,7 +78,6 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       console.log(`Leaving post room: ${post.id}`);
       socket.emit("leave-post", post.id.toString());
       socket.off("new-comment");
-      socket.off("bookmark-updated");
     };
   }, [post.id, queryClient]);
 
@@ -107,12 +95,22 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       }
     },
     onMutate: async () => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
       await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "bookmark"] });
+
+      // Snapshot the previous value
       const previousData = queryClient.getQueryData<BookmarkResponse>(["/api/posts", post.id, "bookmark"]);
-      setIsBookmarked(!isBookmarked);
+
+      // Optimistically update to the new value
+      const newBookmarked = !isBookmarked;
+      setIsBookmarked(newBookmarked);
+      queryClient.setQueryData(["/api/posts", post.id, "bookmark"], { bookmarked: newBookmarked });
+
+      // Return a context object with the previous data
       return { previousData };
     },
     onError: (err, _, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousData) {
         setIsBookmarked(context.previousData.bookmarked);
         queryClient.setQueryData(["/api/posts", post.id, "bookmark"], context.previousData);
@@ -122,6 +120,10 @@ export function PostCard({ post }: { post: PostWithUsername }) {
         description: "Failed to update bookmark status",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      // Always refetch after error or success to make sure our local data is correct
+      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "bookmark"] });
     },
   });
 
