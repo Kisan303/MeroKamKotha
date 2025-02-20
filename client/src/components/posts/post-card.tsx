@@ -28,7 +28,7 @@ import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { socket } from "@/lib/socket";
-import { CommentThread } from './comment-thread'; // Import from same directory
+import { CommentThread } from './comment-thread';
 
 type BookmarkResponse = { bookmarked: boolean };
 type PostWithUsername = Post & { username?: string };
@@ -40,11 +40,30 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
 
   const { data: bookmarkData } = useQuery<BookmarkResponse>({
     queryKey: ["/api/posts", post.id, "bookmark"],
     enabled: !!user,
+  });
+
+  const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
+    queryKey: ["/api/posts", post.id, "comments"],
+    queryFn: async () => {
+      console.log(`Fetching comments for post ${post.id}`);
+      const response = await fetch(`/api/posts/${post.id}/comments`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
+      }
+      const data = await response.json();
+      console.log(`Received ${data.length} comments for post ${post.id}`, data);
+      return data;
+    },
+    enabled: showComments,
+    refetchOnMount: true,
+    staleTime: 1000 * 60,
   });
 
   useEffect(() => {
@@ -148,57 +167,8 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     },
   });
 
-  const editCommentMutation = useMutation({
-    mutationFn: async ({ id, content }: { id: number; content: string }) => {
-      const res = await apiRequest("PATCH", `/api/comments/${id}`, { content });
-      return await res.json();
-    },
-    onSuccess: (updatedComment) => {
-      queryClient.setQueryData<CommentWithUsername[]>(
-        ["/api/posts", post.id, "comments"],
-        (old = []) => old.map(c => c.id === updatedComment.id ? updatedComment : c)
-      );
-      setEditingCommentId(null);
-      toast({
-        title: "Success",
-        description: "Comment updated successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteCommentMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/comments/${id}`);
-    },
-    onSuccess: (_, deletedId) => {
-      queryClient.setQueryData<CommentWithUsername[]>(
-        ["/api/posts", post.id, "comments"],
-        (old = []) => old.filter(c => c.id !== deletedId)
-      );
-      toast({
-        title: "Success",
-        description: "Comment deleted successfully",
-      });
-      setCommentToDelete(null);
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   // Organize comments into a tree structure
-  const topLevelComments = comments.filter(comment => !comment.parentId);
+  const topLevelComments = comments?.filter(comment => !comment.parentId) ?? [];
 
   return (
     <Card className="relative">
@@ -290,7 +260,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             onClick={() => setShowComments(!showComments)}
           >
             <MessageSquare className="h-4 w-4" />
-            {commentsLoading ? "..." : comments.length}
+            {commentsLoading ? "..." : comments?.length ?? 0}
           </Button>
         </div>
 
@@ -301,7 +271,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
                 <div className="flex items-center justify-center h-full">
                   <p className="text-sm text-muted-foreground">Loading comments...</p>
                 </div>
-              ) : comments.length === 0 ? (
+              ) : comments?.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-2">
                   <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
                   <p className="text-sm text-muted-foreground text-center">
