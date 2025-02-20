@@ -75,6 +75,18 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     socket.emit("join-post", post.id.toString());
     console.log(`Joined post room: ${post.id}`);
 
+    socket.on("likes-updated", (data: { liked: boolean; count: number }) => {
+      console.log('Received likes update:', data);
+      queryClient.setQueryData<LikeResponse>(
+        ["/api/posts", post.id, "likes"],
+        (old) => ({
+          likes: old?.likes || [],
+          count: data.count
+        })
+      );
+      setOptimisticLikeCount(data.count);
+    });
+
     socket.on("new-comment", (newComment: CommentWithUsername) => {
       if (newComment.postId === post.id) {
         console.log('Received new comment:', newComment);
@@ -87,19 +99,6 @@ export function PostCard({ post }: { post: PostWithUsername }) {
           }
         );
       }
-    });
-
-    // Add likes-updated event handler
-    socket.on("likes-updated", (data: { liked: boolean; count: number }) => {
-      console.log('Received likes update:', data);
-      queryClient.setQueryData<LikeResponse>(
-        ["/api/posts", post.id, "likes"],
-        (old) => ({
-          likes: old?.likes || [],
-          count: data.count
-        })
-      );
-      setOptimisticLikeCount(data.count);
     });
 
     socket.on("comment-updated", (updatedComment: CommentWithUsername) => {
