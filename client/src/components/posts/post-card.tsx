@@ -4,7 +4,16 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { Bookmark, MessageSquare, Clock, UserCircle } from "lucide-react";
@@ -18,12 +27,18 @@ type BookmarkResponse = { bookmarked: boolean };
 type PostWithUsername = Post & { username?: string };
 type CommentWithUsername = Comment & { username?: string };
 
-export function PostCard({ post }: { post: PostWithUsername }) {
+type PostCardProps = {
+  post: PostWithUsername;
+  inSavedPosts?: boolean;
+};
+
+export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [showUnsaveConfirm, setShowUnsaveConfirm] = useState(false);
 
   // Fetch bookmark status for this specific post
   const { data: bookmarkData } = useQuery<BookmarkResponse>({
@@ -158,6 +173,14 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   // Organize comments into a tree structure
   const topLevelComments = comments.filter(comment => !comment.parentId);
 
+  const handleBookmarkClick = () => {
+    if (inSavedPosts && isBookmarked) {
+      setShowUnsaveConfirm(true);
+    } else {
+      bookmarkMutation.mutate();
+    }
+  };
+
   return (
     <Card className="relative">
       <CardHeader className="pb-3">
@@ -211,28 +234,52 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       <CardFooter className="pt-4 flex flex-col gap-4">
         <div className="flex gap-4 w-full">
           {user && post.userId !== user.id && (
-            <Button
-              variant={isBookmarked ? "default" : "ghost"}
-              size="sm"
-              className={`flex gap-2 transition-all duration-200 ${
-                isBookmarked 
-                  ? "bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50" 
-                  : "hover:bg-gray-100 dark:hover:bg-gray-800/50"
-              }`}
-              onClick={() => bookmarkMutation.mutate()}
-              disabled={bookmarkMutation.isPending}
-            >
-              <Bookmark
-                className={`h-5 w-5 transition-all duration-300 ${
+            <>
+              <Button
+                variant={isBookmarked ? "default" : "ghost"}
+                size="sm"
+                className={`flex gap-2 transition-all duration-200 ${
                   isBookmarked
-                    ? "fill-blue-600 text-blue-600 animate-scale"
-                    : "text-muted-foreground"
+                    ? "bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800/50"
                 }`}
-              />
-              <span className={isBookmarked ? "text-blue-600 font-medium" : ""}>
-                {isBookmarked ? "Saved" : "Save"}
-              </span>
-            </Button>
+                onClick={handleBookmarkClick}
+                disabled={bookmarkMutation.isPending}
+              >
+                <Bookmark
+                  className={`h-5 w-5 transition-all duration-300 ${
+                    isBookmarked
+                      ? "fill-blue-600 text-blue-600 animate-scale"
+                      : "text-muted-foreground"
+                  }`}
+                />
+                <span className={isBookmarked ? "text-blue-600 font-medium" : ""}>
+                  {isBookmarked ? "Saved" : "Save"}
+                </span>
+              </Button>
+
+              <AlertDialog open={showUnsaveConfirm} onOpenChange={setShowUnsaveConfirm}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Unsave Post</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to remove this post from your saved posts?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        setShowUnsaveConfirm(false);
+                        bookmarkMutation.mutate();
+                      }}
+                    >
+                      Unsave
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
           )}
           <Button
             variant="ghost"

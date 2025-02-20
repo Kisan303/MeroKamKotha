@@ -121,7 +121,7 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {bookmarkedPosts.map((post) => (
-                <PostCard key={post.id} post={post} />
+                <PostCard key={post.id} post={post} inSavedPosts={true} />
               ))}
               {bookmarkedPosts.length === 0 && (
                 <Card className="col-span-full p-8 text-center">
