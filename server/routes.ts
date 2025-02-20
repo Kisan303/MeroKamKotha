@@ -65,22 +65,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Creating post with body:", req.body);
       console.log("Files received:", req.files);
 
+      // For room posts, validate images
+      if (req.body.type === "room" && (!req.files || req.files.length === 0)) {
+        return res.status(400).json({ error: "At least one image is required for room posts" });
+      }
+
       const data = {
         ...req.body,
         price: req.body.price ? Number(req.body.price) : null,
       };
 
-      const parsed = insertPostSchema.parse(data);
-      const images = (req.files as Express.Multer.File[])?.map(
-        file => `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
-      ) || [];
+      // Handle both uploaded files and base64 images
+      let images: string[] = [];
 
-      console.log("Creating post with parsed data:", { ...parsed, images });
+      // Add uploaded files
+      if (req.files && Array.isArray(req.files)) {
+        const uploadedImages = (req.files as Express.Multer.File[]).map(
+          file => `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
+        );
+        images = [...images, ...uploadedImages];
+      }
 
-      const post = await storage.createPost(req.user!.id, {
-        ...parsed,
-        images,
+      // Add existing base64 images if present in the request body
+      if (req.body.images && Array.isArray(req.body.images)) {
+        images = [...images, ...req.body.images];
+      }
+
+      console.log("Creating post with parsed data:", { ...data, images });
+
+      const parsed = insertPostSchema.parse({
+        ...data,
+        images: images
       });
+
+      const post = await storage.createPost(req.user!.id, parsed);
+      console.log("Post created:", post);
 
       const user = await storage.getUser(post.userId);
       const postWithUser = { ...post, username: user?.username };

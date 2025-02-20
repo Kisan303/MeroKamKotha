@@ -52,6 +52,48 @@ export function PostForm({ initialData, onSuccess }: {
 
   const postType = form.watch("type");
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    // Validate file count
+    if (files.length > 5) {
+      toast({
+        title: "Error",
+        description: "Maximum 5 images allowed",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Clear existing previews
+    setPreviews([]);
+
+    // Process each file
+    Array.from(files).forEach((file) => {
+      // Validate file size
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: `File ${file.name} exceeds 5MB limit`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviews((prev) => {
+          if (e.target?.result && !prev.includes(e.target.result as string)) {
+            return [...prev, e.target.result as string];
+          }
+          return prev;
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
       console.log("Creating post with data:", data);
@@ -65,21 +107,22 @@ export function PostForm({ initialData, onSuccess }: {
         }
       });
 
-      // Add files if they exist
-      if (fileInputRef.current?.files) {
-        Array.from(fileInputRef.current.files).forEach((file) => {
-          formData.append("images", file);
-        });
+      // For room posts, either use file input or existing images
+      if (postType === "room") {
+        if (fileInputRef.current?.files?.length) {
+          // If new files are selected, use those
+          Array.from(fileInputRef.current.files).forEach((file) => {
+            formData.append("images", file);
+          });
+        } else if (previews.length > 0) {
+          // If using existing images (e.g. when editing)
+          previews.forEach((preview) => {
+            formData.append("images", preview);
+          });
+        }
       }
 
-      // Add existing images from previews
-      if (data.type === "room" && previews.length > 0) {
-        previews.forEach((preview) => {
-          formData.append("images", preview);
-        });
-      }
-
-      console.log("Sending request with formData:", Object.fromEntries(formData));
+      console.log("Sending formData:", Object.fromEntries(formData));
 
       const res = await fetch("/api/posts", {
         method: "POST",
@@ -89,13 +132,10 @@ export function PostForm({ initialData, onSuccess }: {
 
       if (!res.ok) {
         const error = await res.text();
-        console.error("Failed to create post:", error);
         throw new Error(error || "Failed to create post");
       }
 
-      const response = await res.json();
-      console.log("Post created successfully:", response);
-      return response;
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -121,69 +161,6 @@ export function PostForm({ initialData, onSuccess }: {
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async (data: InsertPost) => {
-      await apiRequest("PATCH", `/api/posts/${initialData?.id}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      toast({
-        title: "Success",
-        description: "Post updated successfully",
-      });
-      closeButtonRef.current?.click();
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      console.error("Update post error:", error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    // Validate file count
-    if (files.length > 5) {
-      toast({
-        title: "Error",
-        description: "Maximum 5 images allowed",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Keep existing previews and add new ones
-    Array.from(files).forEach((file) => {
-      // Validate file size
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "Error",
-          description: `File ${file.name} exceeds 5MB limit`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPreviews((prev) => {
-          // Check if we already have this preview
-          if (e.target?.result && !prev.includes(e.target.result as string)) {
-            return [...prev, e.target.result as string];
-          }
-          return prev;
-        });
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
   const onSubmit = async (data: InsertPost) => {
     console.log("Form submitted with data:", data);
 
@@ -198,11 +175,11 @@ export function PostForm({ initialData, onSuccess }: {
     }
 
     try {
-      if (initialData?.id) {
-        await updateMutation.mutateAsync(data);
-      } else {
-        await createMutation.mutateAsync(data);
-      }
+      // Add the preview images to the data
+      await createMutation.mutateAsync({
+        ...data,
+        images: previews
+      });
     } catch (error) {
       console.error("Submit error:", error);
     }
@@ -391,9 +368,9 @@ export function PostForm({ initialData, onSuccess }: {
               </DialogClose>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                disabled={createMutation.isPending}
               >
-                {(createMutation.isPending || updateMutation.isPending) && (
+                {createMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 {initialData?.id ? "Update" : "Create"} Post
