@@ -199,28 +199,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Likes
-  app.post("/api/posts/:id/likes", requireAuth, async (req, res) => {
+  // Bookmarks
+  app.post("/api/posts/:id/bookmark", requireAuth, async (req, res) => {
     try {
-      const liked = await storage.toggleLike(req.user!.id, Number(req.params.id));
-      const likes = await storage.getLikes(Number(req.params.id));
-      const response = { liked, count: likes.length };
+      const isBookmarked = await storage.toggleBookmark(req.user!.id, Number(req.params.id));
+      const bookmarks = await storage.getBookmarks(req.user!.id);
+      const response = { bookmarked: isBookmarked, count: bookmarks.length };
 
-      // Emit updated likes to all clients viewing this post
-      io.to(`post-${req.params.id}`).emit("likes-updated", response);
+      // Emit bookmark update to all clients viewing this post
+      io.to(`post-${req.params.id}`).emit("bookmark-updated", response);
 
       res.json(response);
     } catch (error) {
-      res.status(500).json({ error: "Failed to toggle like" });
+      res.status(500).json({ error: "Failed to toggle bookmark" });
     }
   });
 
-  app.get("/api/posts/:id/likes", async (req, res) => {
+  app.get("/api/posts/:id/bookmark", requireAuth, async (req, res) => {
     try {
-      const likes = await storage.getLikes(Number(req.params.id));
-      res.json({ likes, count: likes.length });
+      const isBookmarked = await storage.isBookmarked(req.user!.id, Number(req.params.id));
+      res.json({ bookmarked: isBookmarked });
     } catch (error) {
-      res.status(500).json({ error: "Failed to get likes" });
+      res.status(500).json({ error: "Failed to get bookmark status" });
+    }
+  });
+
+  app.get("/api/user/bookmarks", requireAuth, async (req, res) => {
+    try {
+      const bookmarks = await storage.getBookmarks(req.user!.id);
+      const bookmarkedPosts = await Promise.all(
+        bookmarks.map(async (bookmark) => {
+          const post = await storage.getPost(bookmark.postId);
+          if (!post) return null;
+          const user = await storage.getUser(post.userId);
+          return { ...post, username: user?.username };
+        })
+      );
+      res.json(bookmarkedPosts.filter(Boolean));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get bookmarked posts" });
     }
   });
 

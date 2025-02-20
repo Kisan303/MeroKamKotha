@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { Heart, MessageSquare, Trash, Edit, Clock, UserCircle, Check, X, MoreVertical } from "lucide-react";
+import { Bookmark, MessageSquare, Trash, Edit, Clock, UserCircle, Check, X, MoreVertical } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { socket } from "@/lib/socket";
 import { CommentThread } from './comment-thread'; // Import from same directory
 
-type LikeResponse = { likes: { id: number; userId: number }[]; count: number };
+type BookmarkResponse = { bookmarked: boolean };
 type PostWithUsername = Post & { username?: string };
 type CommentWithUsername = Comment & { username?: string };
 
@@ -39,52 +39,25 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const { toast } = useToast();
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
-  const [optimisticLikeCount, setOptimisticLikeCount] = useState<number | null>(null);
-  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
-  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
-  const [editContent, setEditContent] = useState("");
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
 
-  const { data: likesData, isLoading: likesLoading } = useQuery<LikeResponse>({
-    queryKey: ["/api/posts", post.id, "likes"],
-    refetchInterval: false,
+  const { data: bookmarkData } = useQuery<BookmarkResponse>({
+    queryKey: ["/api/posts", post.id, "bookmark"],
+    enabled: !!user,
   });
-
-  const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
-    queryKey: ["/api/posts", post.id, "comments"],
-    queryFn: async () => {
-      console.log(`Fetching comments for post ${post.id}`);
-      const response = await fetch(`/api/posts/${post.id}/comments`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch comments');
-      }
-      const data = await response.json();
-      console.log(`Received ${data.length} comments for post ${post.id}`, data);
-      return data;
-    },
-    enabled: true,
-    refetchOnMount: true,
-    staleTime: 1000 * 60,
-  });
-
-  const likes = likesData?.likes ?? [];
-  const likeCount = optimisticLikeCount ?? likesData?.count ?? 0;
-  const isLiked = user ? likes.some((like) => like.userId === user.id) : false;
 
   useEffect(() => {
     socket.emit("join-post", post.id.toString());
     console.log(`Joined post room: ${post.id}`);
 
-    socket.on("likes-updated", (data: { liked: boolean; count: number }) => {
-      console.log('Received likes update:', data);
-      queryClient.setQueryData<LikeResponse>(
-        ["/api/posts", post.id, "likes"],
-        (old) => ({
-          likes: old?.likes || [],
-          count: data.count
-        })
+    socket.on("bookmark-updated", (data: { bookmarked: boolean }) => {
+      console.log('Received bookmark update:', data);
+      queryClient.setQueryData<BookmarkResponse>(
+        ["/api/posts", post.id, "bookmark"],
+        { bookmarked: data.bookmarked }
       );
-      setOptimisticLikeCount(data.count);
+      setIsBookmarked(data.bookmarked);
     });
 
     socket.on("new-comment", (newComment: CommentWithUsername) => {
@@ -121,38 +94,34 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       console.log(`Leaving post room: ${post.id}`);
       socket.emit("leave-post", post.id.toString());
       socket.off("new-comment");
-      socket.off("likes-updated");
+      socket.off("bookmark-updated");
       socket.off("comment-updated");
       socket.off("comment-deleted");
     };
   }, [post.id, queryClient]);
 
-  const likeMutation = useMutation({
+  const bookmarkMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/posts/${post.id}/likes`);
+      const res = await apiRequest("POST", `/api/posts/${post.id}/bookmark`);
       return await res.json();
     },
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "likes"] });
-      const previousData = queryClient.getQueryData<LikeResponse>(["/api/posts", post.id, "likes"]);
-      const newCount = isLiked ? (likeCount - 1) : (likeCount + 1);
-      setOptimisticLikeCount(newCount);
+      await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "bookmark"] });
+      const previousData = queryClient.getQueryData<BookmarkResponse>(["/api/posts", post.id, "bookmark"]);
+      setIsBookmarked(!isBookmarked);
       return { previousData };
     },
     onError: (err, _, context) => {
       if (context?.previousData) {
-        setOptimisticLikeCount(context.previousData.count);
-        queryClient.setQueryData(["/api/posts", post.id, "likes"], context.previousData);
+        setIsBookmarked(context.previousData.bookmarked);
+        queryClient.setQueryData(["/api/posts", post.id, "bookmark"], context.previousData);
       }
       toast({
         title: "Error",
-        description: "Failed to update like status",
+        description: "Failed to update bookmark status",
         variant: "destructive",
       });
     },
-    onSettled: () => {
-      setTimeout(() => setOptimisticLikeCount(null), 1000);
-    }
   });
 
   const commentMutation = useMutation({
@@ -303,15 +272,15 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             variant="ghost"
             size="sm"
             className="flex gap-2"
-            onClick={() => likeMutation.mutate()}
-            disabled={!user || likeMutation.isPending}
+            onClick={() => bookmarkMutation.mutate()}
+            disabled={!user || bookmarkMutation.isPending}
           >
-            <Heart
+            <Bookmark
               className={`h-4 w-4 transition-colors ${
-                isLiked ? "fill-primary text-primary animate-scale" : ""
+                isBookmarked ? "fill-primary text-primary animate-scale" : ""
               }`}
             />
-            {likesLoading ? "..." : likeCount}
+            {isBookmarked ? "Saved" : "Save"}
           </Button>
           <Button
             variant="ghost"

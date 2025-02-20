@@ -25,7 +25,7 @@ export const comments = pgTable("comments", {
   id: serial("id").primaryKey(),
   postId: integer("post_id").notNull(),
   userId: integer("user_id").notNull(),
-  parentId: integer("parent_id"),  // New field for nested comments
+  parentId: integer("parent_id"),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   editedAt: timestamp("edited_at"),
@@ -35,6 +35,13 @@ export const likes = pgTable("likes", {
   id: serial("id").primaryKey(),
   postId: integer("post_id").notNull(),
   userId: integer("user_id").notNull(),
+});
+
+export const bookmarks = pgTable("bookmarks", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull(),
+  userId: integer("user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertUserSchema = createInsertSchema(users);
@@ -56,4 +63,4 @@ export type Post = typeof posts.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
-export type Like = typeof likes.$inferSelect;
+export type Bookmark = typeof bookmarks.$inferSelect;

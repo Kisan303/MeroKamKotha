@@ -1,11 +1,11 @@
-import { users, posts, comments, likes } from "@shared/schema";
+import { users, posts, comments, bookmarks } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";
 import {
   type User,
   type Post,
   type Comment,
-  type Like,
+  type Bookmark,
   type InsertUser,
   type InsertPost,
   type InsertComment,
@@ -33,8 +33,9 @@ export interface IStorage {
   updateComment(id: number, content: string): Promise<Comment>;
   deleteComment(id: number): Promise<void>;
 
-  toggleLike(userId: number, postId: number): Promise<boolean>;
-  getLikes(postId: number): Promise<Like[]>;
+  toggleBookmark(userId: number, postId: number): Promise<boolean>;
+  getBookmarks(userId: number): Promise<Bookmark[]>;
+  isBookmarked(userId: number, postId: number): Promise<boolean>;
 
   sessionStore: session.Store;
 }
@@ -149,24 +150,33 @@ export class DatabaseStorage implements IStorage {
     await db.delete(comments).where(eq(comments.id, id));
   }
 
-  async toggleLike(userId: number, postId: number): Promise<boolean> {
-    const [existingLike] = await db
+  async toggleBookmark(userId: number, postId: number): Promise<boolean> {
+    const [existingBookmark] = await db
       .select()
-      .from(likes)
-      .where(eq(likes.userId, userId))
-      .where(eq(likes.postId, postId));
+      .from(bookmarks)
+      .where(eq(bookmarks.userId, userId))
+      .where(eq(bookmarks.postId, postId));
 
-    if (existingLike) {
-      await db.delete(likes).where(eq(likes.id, existingLike.id));
+    if (existingBookmark) {
+      await db.delete(bookmarks).where(eq(bookmarks.id, existingBookmark.id));
       return false;
     }
 
-    await db.insert(likes).values({ userId, postId });
+    await db.insert(bookmarks).values({ userId, postId });
     return true;
   }
 
-  async getLikes(postId: number): Promise<Like[]> {
-    return await db.select().from(likes).where(eq(likes.postId, postId));
+  async getBookmarks(userId: number): Promise<Bookmark[]> {
+    return await db.select().from(bookmarks).where(eq(bookmarks.userId, userId));
+  }
+
+  async isBookmarked(userId: number, postId: number): Promise<boolean> {
+    const [bookmark] = await db
+      .select()
+      .from(bookmarks)
+      .where(eq(bookmarks.userId, userId))
+      .where(eq(bookmarks.postId, postId));
+    return !!bookmark;
   }
 }
 
