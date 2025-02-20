@@ -218,7 +218,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Bookmark status updated:`, response);
 
-
       res.json(response);
     } catch (error) {
       console.error('Error toggling bookmark:', error);

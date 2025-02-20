@@ -95,7 +95,7 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       }
     },
     onMutate: async () => {
-      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "bookmark"] });
 
       // Snapshot the previous value
@@ -109,8 +109,16 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       // Return a context object with the previous data
       return { previousData };
     },
+    onSuccess: (data) => {
+      // Update the bookmark state with the server response
+      setIsBookmarked(data.bookmarked);
+      queryClient.setQueryData(["/api/posts", post.id, "bookmark"], { bookmarked: data.bookmarked });
+
+      // Invalidate the bookmarks list query to refresh the profile page
+      queryClient.invalidateQueries({ queryKey: ["/api/user/bookmarks"] });
+    },
     onError: (err, _, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
+      // Revert optimistic update on error
       if (context?.previousData) {
         setIsBookmarked(context.previousData.bookmarked);
         queryClient.setQueryData(["/api/posts", post.id, "bookmark"], context.previousData);
@@ -120,10 +128,6 @@ export function PostCard({ post }: { post: PostWithUsername }) {
         description: "Failed to update bookmark status",
         variant: "destructive",
       });
-    },
-    onSettled: () => {
-      // Always refetch after error or success to make sure our local data is correct
-      queryClient.invalidateQueries({ queryKey: ["/api/posts", post.id, "bookmark"] });
     },
   });
 
@@ -218,8 +222,8 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             >
               <Bookmark
                 className={`h-4 w-4 transition-all duration-300 ${
-                  isBookmarked 
-                    ? "fill-primary text-primary animate-scale" 
+                  isBookmarked
+                    ? "fill-primary text-primary animate-scale"
                     : "text-muted-foreground"
                 }`}
               />
