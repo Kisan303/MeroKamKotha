@@ -89,6 +89,19 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       }
     });
 
+    // Add likes-updated event handler
+    socket.on("likes-updated", (data: { liked: boolean; count: number }) => {
+      console.log('Received likes update:', data);
+      queryClient.setQueryData<LikeResponse>(
+        ["/api/posts", post.id, "likes"],
+        (old) => ({
+          likes: old?.likes || [],
+          count: data.count
+        })
+      );
+      setOptimisticLikeCount(data.count);
+    });
+
     socket.on("comment-updated", (updatedComment: CommentWithUsername) => {
       if (updatedComment.postId === post.id) {
         queryClient.setQueryData<CommentWithUsername[]>(
@@ -104,7 +117,6 @@ export function PostCard({ post }: { post: PostWithUsername }) {
         (old = []) => old.filter(c => c.id !== deletedCommentId)
       );
     });
-
 
     return () => {
       console.log(`Leaving post room: ${post.id}`);
