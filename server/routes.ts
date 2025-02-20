@@ -202,24 +202,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bookmarks
   app.post("/api/posts/:id/bookmark", requireAuth, async (req, res) => {
     try {
-      const isBookmarked = await storage.toggleBookmark(req.user!.id, Number(req.params.id));
-      const bookmarks = await storage.getBookmarks(req.user!.id);
+      const postId = Number(req.params.id);
+      const userId = req.user!.id;
+
+      // Validate post exists
+      const post = await storage.getPost(postId);
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+
+      console.log(`Toggling bookmark for post ${postId} by user ${userId}`);
+      const isBookmarked = await storage.toggleBookmark(userId, postId);
+      const bookmarks = await storage.getBookmarks(userId);
       const response = { bookmarked: isBookmarked, count: bookmarks.length };
 
+      console.log(`Bookmark status updated:`, response);
+
       // Emit bookmark update to all clients viewing this post
-      io.to(`post-${req.params.id}`).emit("bookmark-updated", response);
+      io.to(`post-${postId}`).emit("bookmark-updated", response);
 
       res.json(response);
     } catch (error) {
+      console.error('Error toggling bookmark:', error);
       res.status(500).json({ error: "Failed to toggle bookmark" });
     }
   });
 
   app.get("/api/posts/:id/bookmark", requireAuth, async (req, res) => {
     try {
-      const isBookmarked = await storage.isBookmarked(req.user!.id, Number(req.params.id));
+      const postId = Number(req.params.id);
+      const userId = req.user!.id;
+
+      console.log(`Checking bookmark status for post ${postId} by user ${userId}`);
+      const isBookmarked = await storage.isBookmarked(userId, postId);
+
       res.json({ bookmarked: isBookmarked });
     } catch (error) {
+      console.error('Error getting bookmark status:', error);
       res.status(500).json({ error: "Failed to get bookmark status" });
     }
   });

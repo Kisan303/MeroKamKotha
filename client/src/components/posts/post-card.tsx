@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { Bookmark, MessageSquare, Trash, Edit, Clock, UserCircle } from "lucide-react";
+import { Bookmark, MessageSquare, Clock, UserCircle } from "lucide-react";
 import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -24,14 +24,14 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
-  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
 
+  // Fetch bookmark status
   const { data: bookmarkData } = useQuery<BookmarkResponse>({
     queryKey: ["/api/posts", post.id, "bookmark"],
     enabled: !!user,
   });
 
+  // Always fetch comments, just control their display with showComments
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     queryFn: async () => {
@@ -44,10 +44,15 @@ export function PostCard({ post }: { post: PostWithUsername }) {
       console.log(`Received ${data.length} comments for post ${post.id}`, data);
       return data;
     },
-    enabled: showComments,
-    refetchOnMount: true,
     staleTime: 1000 * 60,
   });
+
+  // Update isBookmarked when bookmarkData changes
+  useEffect(() => {
+    if (bookmarkData) {
+      setIsBookmarked(bookmarkData.bookmarked);
+    }
+  }, [bookmarkData]);
 
   useEffect(() => {
     socket.emit("join-post", post.id.toString());
@@ -104,8 +109,16 @@ export function PostCard({ post }: { post: PostWithUsername }) {
 
   const bookmarkMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/posts/${post.id}/bookmark`);
-      return await res.json();
+      try {
+        const res = await apiRequest("POST", `/api/posts/${post.id}/bookmark`);
+        if (!res.ok) {
+          throw new Error('Failed to update bookmark');
+        }
+        return await res.json();
+      } catch (error) {
+        console.error('Bookmark mutation error:', error);
+        throw error;
+      }
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "bookmark"] });
