@@ -54,6 +54,8 @@ export function PostForm({ initialData, onSuccess }: {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
+      console.log("Creating post with data:", data);
+
       const formData = new FormData();
 
       // Add all form fields to formData
@@ -70,6 +72,8 @@ export function PostForm({ initialData, onSuccess }: {
         });
       }
 
+      console.log("Sending request with formData:", Object.fromEntries(formData));
+
       const res = await fetch("/api/posts", {
         method: "POST",
         body: formData,
@@ -78,10 +82,13 @@ export function PostForm({ initialData, onSuccess }: {
 
       if (!res.ok) {
         const error = await res.text();
+        console.error("Failed to create post:", error);
         throw new Error(error || "Failed to create post");
       }
 
-      return await res.json();
+      const response = await res.json();
+      console.log("Post created successfully:", response);
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -95,6 +102,7 @@ export function PostForm({ initialData, onSuccess }: {
       onSuccess?.();
     },
     onError: (error: Error) => {
+      console.error("Create post error:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -116,6 +124,14 @@ export function PostForm({ initialData, onSuccess }: {
       closeButtonRef.current?.click();
       onSuccess?.();
     },
+    onError: (error: Error) => {
+      console.error("Update post error:", error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,7 +148,7 @@ export function PostForm({ initialData, onSuccess }: {
       return;
     }
 
-    // Handle multiple files
+    // Keep existing previews and add new ones
     Array.from(files).forEach((file) => {
       // Validate file size
       if (file.size > 5 * 1024 * 1024) {
@@ -159,6 +175,8 @@ export function PostForm({ initialData, onSuccess }: {
   };
 
   const onSubmit = async (data: InsertPost) => {
+    console.log("Form submitted with data:", data);
+
     // Validate price for room posts
     if (postType === "room" && (!data.price || data.price <= 0)) {
       form.setError("price", {
