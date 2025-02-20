@@ -72,6 +72,15 @@ export function PostForm({ initialData, onSuccess }: {
         });
       }
 
+      // Add existing images if they're from the initial data
+      if (previews.length > 0 && initialData?.images) {
+        previews.forEach((preview) => {
+          if (initialData.images?.includes(preview)) {
+            formData.append("existing_images", preview);
+          }
+        });
+      }
+
       console.log("Sending request with formData:", Object.fromEntries(formData));
 
       const res = await fetch("/api/posts", {
@@ -98,6 +107,9 @@ export function PostForm({ initialData, onSuccess }: {
       });
       form.reset();
       setPreviews([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       closeButtonRef.current?.click();
       onSuccess?.();
     },
@@ -177,23 +189,9 @@ export function PostForm({ initialData, onSuccess }: {
   const onSubmit = async (data: InsertPost) => {
     console.log("Form submitted with data:", data);
 
-    // Validate price for room posts
-    if (postType === "room" && (!data.price || data.price <= 0)) {
-      form.setError("price", {
-        type: "manual",
-        message: "Price is required for room posts"
-      });
-      return;
-    }
-
-    // Validate images for room posts
-    if (postType === "room" && (!fileInputRef.current?.files || fileInputRef.current.files.length === 0)) {
-      toast({
-        title: "Error",
-        description: "At least one image is required for room posts",
-        variant: "destructive",
-      });
-      return;
+    // For room posts, add the images from previews
+    if (postType === "room") {
+      data.images = previews;
     }
 
     try {
@@ -290,14 +288,6 @@ export function PostForm({ initialData, onSuccess }: {
                           value={field.value ?? ""}
                           onChange={(e) => {
                             const value = e.target.value;
-                            if (postType === "room" && (!value || Number(value) <= 0)) {
-                              form.setError("price", {
-                                type: "manual",
-                                message: "Price is required for room posts"
-                              });
-                            } else {
-                              form.clearErrors("price");
-                            }
                             field.onChange(value ? Number(value) : null);
                           }}
                         />
