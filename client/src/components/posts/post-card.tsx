@@ -210,13 +210,13 @@ export function PostCard({ post }: { post: PostWithUsername }) {
             <Button
               variant="ghost"
               size="sm"
-              className="flex gap-2"
+              className="flex gap-2 transition-all duration-200 hover:bg-primary/10"
               onClick={() => bookmarkMutation.mutate()}
               disabled={bookmarkMutation.isPending}
             >
               <Bookmark
-                className={`h-4 w-4 transition-colors ${
-                  isBookmarked ? "fill-primary text-primary animate-scale" : ""
+                className={`h-4 w-4 transition-all duration-300 ${
+                  isBookmarked ? "fill-primary text-primary animate-scale" : "text-muted-foreground"
                 }`}
               />
               {isBookmarked ? "Saved" : "Save"}
