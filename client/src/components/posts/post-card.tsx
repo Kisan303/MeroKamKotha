@@ -204,20 +204,22 @@ export function PostCard({ post }: { post: PostWithUsername }) {
 
       <CardFooter className="pt-4 flex flex-col gap-4">
         <div className="flex gap-4 w-full">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex gap-2"
-            onClick={() => bookmarkMutation.mutate()}
-            disabled={!user || bookmarkMutation.isPending}
-          >
-            <Bookmark
-              className={`h-4 w-4 transition-colors ${
-                isBookmarked ? "fill-primary text-primary animate-scale" : ""
-              }`}
-            />
-            {isBookmarked ? "Saved" : "Save"}
-          </Button>
+          {user && post.userId !== user.id && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex gap-2"
+              onClick={() => bookmarkMutation.mutate()}
+              disabled={bookmarkMutation.isPending}
+            >
+              <Bookmark
+                className={`h-4 w-4 transition-colors ${
+                  isBookmarked ? "fill-primary text-primary animate-scale" : ""
+                }`}
+              />
+              {isBookmarked ? "Saved" : "Save"}
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
