@@ -4,12 +4,12 @@ import { Server as SocketIOServer } from "socket.io";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
-import multer from "multer";
+//import multer from "multer"; //Removed multer import
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-});
+//const upload = multer({ //Removed multer configuration
+//  storage: multer.memoryStorage(),
+//  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+//});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -60,13 +60,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(postsWithUsernames);
   });
 
-  app.post("/api/posts", requireAuth, upload.array("images", 5), async (req, res) => {
+  app.post("/api/posts", requireAuth, async (req, res) => {
     try {
       console.log("Creating post with body:", req.body);
-      console.log("Files received:", req.files);
 
       // For room posts, validate images
-      if (req.body.type === "room" && (!req.files || req.files.length === 0)) {
+      if (req.body.type === "room" && (!req.body.images || req.body.images.length === 0)) {
         return res.status(400).json({ error: "At least one image is required for room posts" });
       }
 
@@ -75,28 +74,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         price: req.body.price ? Number(req.body.price) : null,
       };
 
-      // Handle both uploaded files and base64 images
-      let images: string[] = [];
-
-      // Add uploaded files
-      if (req.files && Array.isArray(req.files)) {
-        const uploadedImages = (req.files as Express.Multer.File[]).map(
-          file => `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
-        );
-        images = [...images, ...uploadedImages];
-      }
-
-      // Add existing base64 images if present in the request body
-      if (req.body.images && Array.isArray(req.body.images)) {
-        images = [...images, ...req.body.images];
-      }
-
-      console.log("Creating post with parsed data:", { ...data, images });
-
-      const parsed = insertPostSchema.parse({
-        ...data,
-        images: images
-      });
+      const parsed = insertPostSchema.parse(data);
+      console.log("Creating post with parsed data:", parsed);
 
       const post = await storage.createPost(req.user!.id, parsed);
       console.log("Post created:", post);

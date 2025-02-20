@@ -28,7 +28,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DialogTitle, DialogClose } from "@/components/ui/dialog";
-import { uploadMultipleImages } from "@/lib/uploadImage";
 
 export function PostForm({ initialData, onSuccess }: {
   initialData?: InsertPost & { id?: number };
@@ -37,7 +36,6 @@ export function PostForm({ initialData, onSuccess }: {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.images || []);
-  const [isUploading, setIsUploading] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const form = useForm<InsertPost>({
@@ -68,12 +66,12 @@ export function PostForm({ initialData, onSuccess }: {
       return;
     }
 
-    // Clear existing previews
+    // Clear existing previews if any files are selected
     setPreviews([]);
 
     // Process each file
     Array.from(files).forEach((file) => {
-      // Validate file size
+      // Validate file size (5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "Error",
@@ -99,19 +97,15 @@ export function PostForm({ initialData, onSuccess }: {
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
       try {
-        setIsUploading(true);
-        let imageUrls: string[] = [];
-
-        // For room posts, upload images to Firebase
-        if (data.type === "room" && previews.length > 0) {
-          imageUrls = await uploadMultipleImages(previews);
-          console.log("Uploaded image URLs:", imageUrls);
+        // For room posts, validate images
+        if (data.type === "room" && (!previews || previews.length === 0)) {
+          throw new Error("At least one image is required for room posts");
         }
 
-        // Create post with image URLs
+        // Create post with base64 images
         const res = await apiRequest("POST", "/api/posts", {
           ...data,
-          images: imageUrls
+          images: previews
         });
 
         if (!res.ok) {
@@ -122,8 +116,6 @@ export function PostForm({ initialData, onSuccess }: {
       } catch (error) {
         console.error("Error in create mutation:", error);
         throw error;
-      } finally {
-        setIsUploading(false);
       }
     },
     onSuccess: () => {
@@ -164,7 +156,6 @@ export function PostForm({ initialData, onSuccess }: {
     }
 
     try {
-      // Add the preview images to the data
       await createMutation.mutateAsync({
         ...data,
         images: previews
@@ -357,12 +348,12 @@ export function PostForm({ initialData, onSuccess }: {
               </DialogClose>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || isUploading}
+                disabled={createMutation.isPending}
               >
-                {(createMutation.isPending || isUploading) && (
+                {createMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {isUploading ? "Uploading Images..." : createMutation.isPending ? "Creating Post..." : "Create Post"}
+                {createMutation.isPending ? "Creating Post..." : "Create Post"}
               </Button>
             </div>
           </form>

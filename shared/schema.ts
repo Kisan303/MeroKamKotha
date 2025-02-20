@@ -59,7 +59,7 @@ export const insertPostSchema = createInsertSchema(posts)
     location: z.string().min(1, "Location is required"),
     type: z.enum(["room", "job"]),
     price: z.number().nullable(),
-    images: z.array(z.string().url("Invalid image URL")).optional(),
+    images: z.array(z.string()).optional(),
   })
   .refine(
     (data) => {
