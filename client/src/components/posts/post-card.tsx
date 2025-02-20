@@ -7,28 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { Bookmark, MessageSquare, Trash, Edit, Clock, UserCircle, Check, X, MoreVertical } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Bookmark, MessageSquare, Trash, Edit, Clock, UserCircle } from "lucide-react";
 import type { Post, Comment } from "@shared/schema";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { socket } from "@/lib/socket";
-import { CommentThread } from './comment-thread'; // Import from same directory
+import { CommentThread } from './comment-thread';
 
 type BookmarkResponse = { bookmarked: boolean };
 type PostWithUsername = Post & { username?: string };
@@ -40,11 +24,29 @@ export function PostCard({ post }: { post: PostWithUsername }) {
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
 
   const { data: bookmarkData } = useQuery<BookmarkResponse>({
     queryKey: ["/api/posts", post.id, "bookmark"],
     enabled: !!user,
+  });
+
+  const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
+    queryKey: ["/api/posts", post.id, "comments"],
+    queryFn: async () => {
+      console.log(`Fetching comments for post ${post.id}`);
+      const response = await fetch(`/api/posts/${post.id}/comments`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
+      }
+      const data = await response.json();
+      console.log(`Received ${data.length} comments for post ${post.id}`, data);
+      return data;
+    },
+    enabled: showComments,
+    refetchOnMount: true,
+    staleTime: 1000 * 60,
   });
 
   useEffect(() => {
@@ -148,55 +150,6 @@ export function PostCard({ post }: { post: PostWithUsername }) {
     },
   });
 
-  const editCommentMutation = useMutation({
-    mutationFn: async ({ id, content }: { id: number; content: string }) => {
-      const res = await apiRequest("PATCH", `/api/comments/${id}`, { content });
-      return await res.json();
-    },
-    onSuccess: (updatedComment) => {
-      queryClient.setQueryData<CommentWithUsername[]>(
-        ["/api/posts", post.id, "comments"],
-        (old = []) => old.map(c => c.id === updatedComment.id ? updatedComment : c)
-      );
-      setEditingCommentId(null);
-      toast({
-        title: "Success",
-        description: "Comment updated successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteCommentMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/comments/${id}`);
-    },
-    onSuccess: (_, deletedId) => {
-      queryClient.setQueryData<CommentWithUsername[]>(
-        ["/api/posts", post.id, "comments"],
-        (old = []) => old.filter(c => c.id !== deletedId)
-      );
-      toast({
-        title: "Success",
-        description: "Comment deleted successfully",
-      });
-      setCommentToDelete(null);
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   // Organize comments into a tree structure
   const topLevelComments = comments.filter(comment => !comment.parentId);
 
@@ -215,25 +168,9 @@ export function PostCard({ post }: { post: PostWithUsername }) {
               {post.title}
             </h2>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              {format(new Date(post.createdAt), "PPp")}
-            </div>
-            {user && user.id === post.userId && (
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon">
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {/*deleteMutation.mutate()*/} }
-                >
-                  <Trash className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            {format(new Date(post.createdAt), "PPp")}
           </div>
         </div>
       </CardHeader>
@@ -350,29 +287,6 @@ export function PostCard({ post }: { post: PostWithUsername }) {
           </>
         )}
       </CardFooter>
-      <AlertDialog open={commentToDelete !== null} onOpenChange={(open) => setCommentToDelete(open ? commentToDelete : null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Comment</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this comment? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (commentToDelete) {
-                  deleteCommentMutation.mutate(commentToDelete);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 }
