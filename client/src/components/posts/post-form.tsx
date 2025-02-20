@@ -132,9 +132,7 @@ export function PostForm({ initialData, onSuccess }: {
       return;
     }
 
-    // Clear previous previews if this is a new selection
-    setPreviews([]);
-
+    // Keep existing previews
     Array.from(files).forEach((file) => {
       // Validate file size
       if (file.size > 5 * 1024 * 1024) {
@@ -158,7 +156,7 @@ export function PostForm({ initialData, onSuccess }: {
 
   const onSubmit = async (data: InsertPost) => {
     // Validate price for room posts
-    if (data.type === "room" && (!data.price || data.price <= 0)) {
+    if (postType === "room" && (!data.price || data.price <= 0)) {
       form.setError("price", {
         type: "manual",
         message: "Price is required for room posts"
@@ -167,7 +165,7 @@ export function PostForm({ initialData, onSuccess }: {
     }
 
     // Validate images for room posts
-    if (data.type === "room" && (!fileInputRef.current?.files || fileInputRef.current.files.length === 0)) {
+    if (postType === "room" && (!fileInputRef.current?.files || fileInputRef.current.files.length === 0)) {
       toast({
         title: "Error",
         description: "At least one image is required for room posts",
