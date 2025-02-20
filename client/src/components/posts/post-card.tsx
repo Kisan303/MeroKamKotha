@@ -215,19 +215,23 @@ export function PostCard({ post }: { post: PostWithUsername }) {
               variant={isBookmarked ? "default" : "ghost"}
               size="sm"
               className={`flex gap-2 transition-all duration-200 ${
-                isBookmarked ? "bg-primary/10 hover:bg-primary/20" : "hover:bg-primary/5"
+                isBookmarked 
+                  ? "bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50" 
+                  : "hover:bg-gray-100 dark:hover:bg-gray-800/50"
               }`}
               onClick={() => bookmarkMutation.mutate()}
               disabled={bookmarkMutation.isPending}
             >
               <Bookmark
-                className={`h-4 w-4 transition-all duration-300 ${
+                className={`h-5 w-5 transition-all duration-300 ${
                   isBookmarked
-                    ? "fill-primary text-primary animate-scale"
+                    ? "fill-blue-600 text-blue-600 animate-scale"
                     : "text-muted-foreground"
                 }`}
               />
-              {isBookmarked ? "Saved" : "Save"}
+              <span className={isBookmarked ? "text-blue-600 font-medium" : ""}>
+                {isBookmarked ? "Saved" : "Save"}
+              </span>
             </Button>
           )}
           <Button
