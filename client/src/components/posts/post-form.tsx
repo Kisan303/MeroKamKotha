@@ -54,17 +54,16 @@ export function PostForm({ initialData, onSuccess }: {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
-      if (postType === "room" && (!fileInputRef.current?.files || fileInputRef.current.files.length === 0)) {
-        throw new Error("At least one image is required for room posts");
-      }
-
       const formData = new FormData();
+
+      // Add all form fields to formData
       Object.entries(data).forEach(([key, value]) => {
         if (key !== "images") {
           formData.append(key, value?.toString() || "");
         }
       });
 
+      // Add files if they exist
       if (fileInputRef.current?.files) {
         Array.from(fileInputRef.current.files).forEach((file) => {
           formData.append("images", file);
@@ -78,7 +77,8 @@ export function PostForm({ initialData, onSuccess }: {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to create post");
+        const error = await res.text();
+        throw new Error(error || "Failed to create post");
       }
 
       return await res.json();
@@ -132,7 +132,7 @@ export function PostForm({ initialData, onSuccess }: {
       return;
     }
 
-    // Keep existing previews
+    // Handle multiple files
     Array.from(files).forEach((file) => {
       // Validate file size
       if (file.size > 5 * 1024 * 1024) {
@@ -146,9 +146,13 @@ export function PostForm({ initialData, onSuccess }: {
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        if (e.target?.result) {
-          setPreviews(prev => [...prev, e.target.result as string]);
-        }
+        setPreviews((prev) => {
+          // Check if we already have this preview
+          if (e.target?.result && !prev.includes(e.target.result as string)) {
+            return [...prev, e.target.result as string];
+          }
+          return prev;
+        });
       };
       reader.readAsDataURL(file);
     });
@@ -174,10 +178,14 @@ export function PostForm({ initialData, onSuccess }: {
       return;
     }
 
-    if (initialData?.id) {
-      updateMutation.mutate(data);
-    } else {
-      createMutation.mutate(data);
+    try {
+      if (initialData?.id) {
+        await updateMutation.mutateAsync(data);
+      } else {
+        await createMutation.mutateAsync(data);
+      }
+    } catch (error) {
+      console.error("Submit error:", error);
     }
   };
 
