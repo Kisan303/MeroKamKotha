@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, X, ImagePlus } from "lucide-react";
+import { Loader2, X, ImagePlus, Building2, Briefcase, DollarSign, MapPin } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Form,
@@ -28,6 +28,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { motion, AnimatePresence } from "framer-motion";
+
+const formVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+};
+
+const inputVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { opacity: 1, x: 0 }
+};
 
 export function PostForm({ initialData, onSuccess }: {
   initialData?: InsertPost & { id?: number };
@@ -170,220 +181,286 @@ export function PostForm({ initialData, onSuccess }: {
     },
   });
 
-  const onSubmit = async (data: InsertPost) => {
-    console.log("Form submitted with data:", data);
-
-    // For room posts, validate images
-    if (postType === "room" && previews.length === 0) {
-      toast({
-        title: "Error",
-        description: "At least one image is required for room posts",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await createMutation.mutateAsync({
-        ...data,
-        images: previews
-      });
-    } catch (error) {
-      console.error("Submit error:", error);
-    }
-  };
-
   return (
     <ScrollArea className="h-[80vh] w-full">
-      <div className="space-y-6 px-6">
-        <DialogTitle className="text-xl font-semibold">
+      <motion.div 
+        className="space-y-6 px-6"
+        variants={formVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <DialogTitle className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
           {initialData?.id ? "Edit Post" : "Create New Post"}
         </DialogTitle>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Post Type</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select post type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="room">Room</SelectItem>
-                      <SelectItem value="job">Job</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter title" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Enter description"
-                      className="min-h-[120px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={form.handleSubmit(createMutation.mutate)} className="space-y-6">
+            <motion.div
+              variants={inputVariants}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.1 }}
+              className="bg-gradient-to-br from-card to-muted/5 border border-muted-foreground/10 rounded-lg p-6 space-y-6"
+            >
               <FormField
                 control={form.control}
-                name="price"
+                name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{postType === "room" ? "Price (Required)" : "Price (Optional)"}</FormLabel>
+                    <FormLabel className="text-lg font-medium">What are you posting?</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="bg-background/50 backdrop-blur-sm border-muted-foreground/20">
+                          <SelectValue placeholder="Select post type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="room" className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          <span>Room for Rent</span>
+                        </SelectItem>
+                        <SelectItem value="job" className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4" />
+                          <span>Job Opportunity</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                        <Input
-                          type="number"
-                          placeholder="Enter price"
-                          className="pl-7"
-                          {...field}
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            field.onChange(value ? Number(value) : null);
-                          }}
+                      <Input 
+                        placeholder={postType === "room" ? "e.g., Cozy Studio in Downtown" : "e.g., Senior Software Engineer"} 
+                        className="bg-background/50 backdrop-blur-sm border-muted-foreground/20"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder={
+                          postType === "room"
+                            ? "Describe the room, amenities, and requirements..."
+                            : "Describe the role, requirements, and company benefits..."
+                        }
+                        className="min-h-[120px] bg-background/50 backdrop-blur-sm border-muted-foreground/20"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </motion.div>
+
+            <motion.div
+              variants={inputVariants}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.2 }}
+              className="grid grid-cols-2 gap-4"
+            >
+              <Card className="bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent border-muted-foreground/10 p-4">
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-blue-500" />
+                        {postType === "room" ? "Monthly Rent" : "Salary Range"}
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input
+                            type="number"
+                            placeholder="Enter amount"
+                            className="pl-7 bg-background/50 backdrop-blur-sm border-muted-foreground/20"
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              field.onChange(value ? Number(value) : null);
+                            }}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        {postType === "room" ? "Required for room listings" : "Optional for job posts"}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </Card>
+
+              <Card className="bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent border-muted-foreground/10 p-4">
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-purple-500" />
+                        Location
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="City, State or Address" 
+                          className="bg-background/50 backdrop-blur-sm border-muted-foreground/20"
+                          {...field} 
                         />
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      {postType === "room" ? "Monthly rent amount (required)" : "Salary (optional)"}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter location" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    <FormDescription>
-                      City, State or full address
-                    </FormDescription>
-                  </FormItem>
-                )}
-              />
-            </div>
+                      </FormControl>
+                      <FormDescription>
+                        Enter the location details
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </Card>
+            </motion.div>
 
             {postType === "room" && (
-              <FormItem>
-                <FormLabel>Images (Required)</FormLabel>
-                <FormControl>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        ref={fileInputRef}
-                        onChange={handleImageChange}
-                        className="cursor-pointer"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <ImagePlus className="h-4 w-4" />
-                      </Button>
+              <motion.div
+                variants={inputVariants}
+                initial="hidden"
+                animate="visible"
+                transition={{ delay: 0.3 }}
+                className="bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent border border-muted-foreground/10 rounded-lg p-6"
+              >
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <ImagePlus className="h-5 w-5 text-green-500" />
+                    Room Photos
+                  </FormLabel>
+                  <FormControl>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          ref={fileInputRef}
+                          onChange={handleImageChange}
+                          className="cursor-pointer bg-background/50 backdrop-blur-sm border-muted-foreground/20"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="group"
+                        >
+                          <ImagePlus className="h-4 w-4 transition-transform group-hover:scale-110" />
+                        </Button>
+                      </div>
+
+                      <AnimatePresence>
+                        {previews.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                          >
+                            <Card className="p-4 bg-card/50 backdrop-blur-sm">
+                              <div className="grid grid-cols-2 gap-4">
+                                {previews.map((preview, index) => (
+                                  <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    transition={{ delay: index * 0.1 }}
+                                    className="relative group rounded-lg overflow-hidden"
+                                  >
+                                    <img
+                                      src={preview}
+                                      alt={`Preview ${index + 1}`}
+                                      className="rounded-md w-full h-48 object-cover transition-all duration-300 group-hover:brightness-110"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="icon"
+                                      className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-1 group-hover:translate-y-0"
+                                      onClick={() => {
+                                        setPreviews(previews.filter((_, i) => i !== index));
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </motion.div>
+                                ))}
+                              </div>
+                            </Card>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                    {previews.length > 0 && (
-                      <Card className="p-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          {previews.map((preview, index) => (
-                            <div key={index} className="relative group">
-                              <img
-                                src={preview}
-                                alt={`Preview ${index + 1}`}
-                                className="rounded-md w-full h-48 object-cover"
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon"
-                                className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => {
-                                  setPreviews(previews.filter((_, i) => i !== index));
-                                }}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </Card>
-                    )}
-                  </div>
-                </FormControl>
-                <FormDescription>
-                  You must upload 1-5 images for room posts. Each image must be less than 5MB.
-                </FormDescription>
-                {postType === "room" && previews.length === 0 && (
-                  <FormMessage>At least one image is required for room posts</FormMessage>
-                )}
-              </FormItem>
+                  </FormControl>
+                  <FormDescription>
+                    Upload 1-5 high-quality images (max 5MB each)
+                  </FormDescription>
+                  {postType === "room" && previews.length === 0 && (
+                    <FormMessage>At least one image is required for room posts</FormMessage>
+                  )}
+                </FormItem>
+              </motion.div>
             )}
 
-            <div className="flex gap-4 justify-end">
+            <motion.div
+              variants={inputVariants}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.4 }}
+              className="flex gap-4 justify-end"
+            >
               <DialogClose ref={closeButtonRef} asChild>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  className="bg-background/50 backdrop-blur-sm border-muted-foreground/20"
+                >
+                  Cancel
+                </Button>
               </DialogClose>
               <Button
                 type="submit"
                 disabled={createMutation.isPending}
+                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
               >
                 {createMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 {createMutation.isPending ? "Creating Post..." : "Create Post"}
               </Button>
-            </div>
+            </motion.div>
           </form>
         </Form>
-      </div>
+      </motion.div>
       <ScrollBar />
     </ScrollArea>
   );
