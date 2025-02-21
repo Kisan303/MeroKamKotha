@@ -1,10 +1,12 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Button } from "./button";
-import { UserCircle, Mail, Github } from "lucide-react";
+import { UserCircle, Mail, Github, Plus, Sparkles } from "lucide-react";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { PostForm } from "@/components/posts/post-form";
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { logoutMutation } = useAuth();
+  const { user } = useAuth();
   const [location] = useLocation();
 
   return (
@@ -23,15 +25,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 About
               </Button>
             </Link>
-            <Link href="/profile">
-              <Button variant={location === "/profile" ? "default" : "ghost"} className="gap-2">
-                <UserCircle className="h-4 w-4" />
-                Profile
+            {user ? (
+              <>
+                <Link href="/profile">
+                  <Button variant={location === "/profile" ? "default" : "ghost"} className="gap-2">
+                    <UserCircle className="h-4 w-4" />
+                    Profile
+                  </Button>
+                </Link>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="gap-2 group">
+                      <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                      <span>Create Post</span>
+                      <Sparkles className="h-4 w-4 text-primary-foreground/80 animate-pulse" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <PostForm />
+                  </DialogContent>
+                </Dialog>
+              </>
+            ) : (
+              <Button variant="default" asChild>
+                <Link href="/auth" className="gap-2">
+                  Login
+                </Link>
               </Button>
-            </Link>
-            <Button variant="ghost" onClick={() => logoutMutation.mutate()}>
-              Logout
-            </Button>
+            )}
           </div>
         </div>
       </header>
