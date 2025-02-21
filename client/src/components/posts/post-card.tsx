@@ -31,6 +31,7 @@ import { socket } from "@/lib/socket";
 import { CommentThread } from './comment-thread';
 import { Input } from "@/components/ui/input";
 import { PostForm } from "./post-form";
+import { motion, AnimatePresence } from 'framer-motion';
 
 type BookmarkResponse = { bookmarked: boolean };
 type PostWithUsername = Post & { username?: string };
@@ -213,235 +214,288 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
   };
 
   return (
-    <Card className="relative">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <UserCircle className="h-5 w-5 text-muted-foreground" />
-              <p className="text-sm font-medium">
-                {post.username || "Unknown"}
-              </p>
-            </div>
-            <h2 className="text-2xl font-bold leading-none tracking-tight">
-              {post.title}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              {format(new Date(post.createdAt), "PPp")}
-              {post.editedAt && (
-                <span className="text-xs text-muted-foreground ml-1">
-                  (edited {format(new Date(post.editedAt), "PPp")})
-                </span>
-              )}
-            </div>
-            {user && post.userId === user.id && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="text-destructive"
-                  >
-                    <Trash className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="pb-3">
-        <p className="text-base leading-relaxed mb-4">{post.description}</p>
-        {post.type === "room" && post.images && post.images.length > 0 && (
-          <div className="flex overflow-x-auto gap-4 mb-4 pb-2">
-            {post.images.map((image, i) => (
-              <img
-                key={i}
-                src={image}
-                alt={`Room ${i + 1}`}
-                className="rounded-lg object-cover w-72 h-48 flex-none hover:opacity-90 transition-opacity"
-              />
-            ))}
-          </div>
-        )}
-        <div className="flex gap-4 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1">
-            📍 {post.location}
-          </span>
-          {post.price && (
-            <span className="flex items-center gap-1">
-              💰 ${post.price.toLocaleString()}
-            </span>
-          )}
-        </div>
-      </CardContent>
-
-      <Separator />
-
-      <CardFooter className="pt-4 flex flex-col gap-4">
-        <div className="flex gap-4 w-full">
-          {user && post.userId !== user.id && (
-            <>
-              <Button
-                variant={isBookmarked ? "default" : "ghost"}
-                size="sm"
-                className={`flex gap-2 transition-all duration-200 ${
-                  isBookmarked
-                    ? "bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                }`}
-                onClick={handleBookmarkClick}
-                disabled={bookmarkMutation.isPending}
-              >
-                <Bookmark
-                  className={`h-5 w-5 transition-all duration-300 ${
-                    isBookmarked
-                      ? "fill-blue-600 text-blue-600 animate-scale"
-                      : "text-muted-foreground"
-                  }`}
-                />
-                <span className={isBookmarked ? "text-blue-600 font-medium" : ""}>
-                  {isBookmarked ? "Saved" : "Save"}
-                </span>
-              </Button>
-
-              <AlertDialog open={showUnsaveConfirm} onOpenChange={setShowUnsaveConfirm}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Unsave Post</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to remove this post from your saved posts?
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => {
-                        setShowUnsaveConfirm(false);
-                        bookmarkMutation.mutate();
-                      }}
-                    >
-                      Unsave
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex gap-2"
-            disabled={!user}
-            onClick={() => setShowComments(!showComments)}
-          >
-            <MessageSquare className="h-4 w-4" />
-            {commentsLoading ? "..." : comments.length}
-          </Button>
-        </div>
-
-        {showComments && (
-          <>
-            <ScrollArea className="h-[400px] w-full rounded-md border p-4">
-              {commentsLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-sm text-muted-foreground">Loading comments...</p>
-                </div>
-              ) : comments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full gap-2">
-                  <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground text-center">
-                    No comments yet.
-                  </p>
-                  <p className="text-xs text-muted-foreground text-center">
-                    Be the first to share your thoughts!
-                  </p>
-                </div>
-              ) : (
-                topLevelComments.map((comment) => (
-                  <CommentThread
-                    key={comment.id}
-                    comment={comment}
-                    replies={comments}
-                    currentUser={user}
-                    postId={post.id}
-                  />
-                ))
-              )}
-            </ScrollArea>
-
-            {user && (
-              <div className="flex gap-2 w-full">
-                <Input
-                  placeholder="Write a comment..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  className="flex-1"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey && comment.trim()) {
-                      e.preventDefault();
-                      commentMutation.mutate();
-                    }
-                  }}
-                />
-                <Button
-                  onClick={() => commentMutation.mutate()}
-                  disabled={!comment.trim() || commentMutation.isPending}
-                  className="whitespace-nowrap"
-                >
-                  {commentMutation.isPending ? "Posting..." : "Post Comment"}
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-      </CardFooter>
-
-      {/* Add Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
-          <PostForm initialData={post} onSuccess={() => setShowEditDialog(false)} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Delete Confirmation */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Post</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this post? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                deleteMutation.mutate();
-                setShowDeleteConfirm(false);
-              }}
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ y: -4 }}
+      className="will-change-transform"
+    >
+      <Card className="relative overflow-hidden bg-gradient-to-br from-card to-muted/5 border-muted-foreground/10 hover:border-primary/20 transition-colors">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="space-y-1.5"
             >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <div className="flex items-center gap-2">
+                <UserCircle className="h-5 w-5 text-muted-foreground" />
+                <p className="text-sm font-medium">
+                  {post.username || "Unknown"}
+                </p>
+              </div>
+              <motion.h2
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-2xl font-bold leading-none tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent"
+              >
+                {post.title}
+              </motion.h2>
+            </motion.div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                {format(new Date(post.createdAt), "PPp")}
+                {post.editedAt && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (edited {format(new Date(post.editedAt), "PPp")})
+                  </span>
+                )}
+              </div>
+              {user && post.userId === user.id && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="text-destructive"
+                    >
+                      <Trash className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </div>
+        </CardHeader>
 
-      {/* Keep existing unsave confirmation dialog... */}
-    </Card>
+        <CardContent className="pb-3">
+          <motion.p
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-base leading-relaxed mb-4"
+          >
+            {post.description}
+          </motion.p>
+          {post.type === "room" && post.images && post.images.length > 0 && (
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="flex overflow-x-auto gap-4 mb-4 pb-2 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent"
+            >
+              {post.images.map((image, i) => (
+                <motion.div
+                  key={i}
+                  whileHover={{ scale: 1.02 }}
+                  className="relative flex-none"
+                >
+                  <img
+                    src={image}
+                    alt={`Room ${i + 1}`}
+                    className="rounded-lg object-cover w-72 h-48 transition-all duration-300 hover:brightness-110"
+                  />
+                  <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-black/10" />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+          <motion.div
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="flex gap-4 text-sm text-muted-foreground"
+          >
+            <span className="flex items-center gap-1">
+              📍 {post.location}
+            </span>
+            {post.price && (
+              <span className="flex items-center gap-1">
+                💰 ${post.price.toLocaleString()}
+              </span>
+            )}
+          </motion.div>
+        </CardContent>
+
+        <Separator />
+
+        <CardFooter className="pt-4 flex flex-col gap-4">
+          <motion.div
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="flex gap-4 w-full"
+          >
+            {user && post.userId !== user.id && (
+              <>
+                <Button
+                  variant={isBookmarked ? "default" : "ghost"}
+                  size="sm"
+                  className={`flex gap-2 transition-all duration-200 ${
+                    isBookmarked
+                      ? "bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                  }`}
+                  onClick={handleBookmarkClick}
+                  disabled={bookmarkMutation.isPending}
+                >
+                  <Bookmark
+                    className={`h-5 w-5 transition-all duration-300 ${
+                      isBookmarked
+                        ? "fill-blue-600 text-blue-600 animate-scale"
+                        : "text-muted-foreground"
+                    }`}
+                  />
+                  <span className={isBookmarked ? "text-blue-600 font-medium" : ""}>
+                    {isBookmarked ? "Saved" : "Save"}
+                  </span>
+                </Button>
+
+                <AlertDialog open={showUnsaveConfirm} onOpenChange={setShowUnsaveConfirm}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Unsave Post</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to remove this post from your saved posts?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          setShowUnsaveConfirm(false);
+                          bookmarkMutation.mutate();
+                        }}
+                      >
+                        Unsave
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex gap-2"
+              disabled={!user}
+              onClick={() => setShowComments(!showComments)}
+            >
+              <MessageSquare className="h-4 w-4" />
+              {commentsLoading ? "..." : comments.length}
+            </Button>
+          </motion.div>
+
+          <AnimatePresence>
+            {showComments && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ScrollArea className="h-[400px] w-full rounded-md border p-4">
+                  {commentsLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-sm text-muted-foreground">Loading comments...</p>
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-2">
+                      <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
+                      <p className="text-sm text-muted-foreground text-center">
+                        No comments yet.
+                      </p>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Be the first to share your thoughts!
+                      </p>
+                    </div>
+                  ) : (
+                    topLevelComments.map((comment) => (
+                      <CommentThread
+                        key={comment.id}
+                        comment={comment}
+                        replies={comments}
+                        currentUser={user}
+                        postId={post.id}
+                      />
+                    ))
+                  )}
+                </ScrollArea>
+
+                {user && (
+                  <div className="flex gap-2 w-full">
+                    <Input
+                      placeholder="Write a comment..."
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      className="flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey && comment.trim()) {
+                          e.preventDefault();
+                          commentMutation.mutate();
+                        }
+                      }}
+                    />
+                    <Button
+                      onClick={() => commentMutation.mutate()}
+                      disabled={!comment.trim() || commentMutation.isPending}
+                      className="whitespace-nowrap"
+                    >
+                      {commentMutation.isPending ? "Posting..." : "Post Comment"}
+                    </Button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </CardFooter>
+
+        {/* Add Edit Dialog */}
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent>
+            <PostForm initialData={post} onSuccess={() => setShowEditDialog(false)} />
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Delete Confirmation */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Post</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this post? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  deleteMutation.mutate();
+                  setShowDeleteConfirm(false);
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Keep existing unsave confirmation dialog... */}
+      </Card>
+    </motion.div>
   );
 }
