@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Building2, Briefcase, Sparkles } from "lucide-react";
+import { Search, Plus, Building2, Briefcase, Sparkles, UserCircle, LogIn } from "lucide-react";
 import { socket } from "@/lib/socket";
 import { queryClient } from "@/lib/queryClient";
 import type { Post } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "wouter";
 
 type PostWithUsername = Post & { username?: string };
 
@@ -42,14 +43,14 @@ export default function HomePage() {
     };
   }, []);
 
-  const sortedPosts = [...posts].sort((a, b) => 
+  const sortedPosts = [...posts].sort((a, b) =>
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
   const filteredPosts = sortedPosts.filter((post) => {
     const matchesSearch = post.title.toLowerCase().includes(search.toLowerCase()) ||
-                       post.description.toLowerCase().includes(search.toLowerCase()) ||
-                       post.location.toLowerCase().includes(search.toLowerCase());
+                         post.description.toLowerCase().includes(search.toLowerCase()) ||
+                         post.location.toLowerCase().includes(search.toLowerCase());
     const matchesType = postType === "all" || post.type === postType;
     return matchesSearch && matchesType;
   });
@@ -65,25 +66,49 @@ export default function HomePage() {
             <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               Mero KamKotha
             </h1>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className="gap-2 group">
-                  <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
-                  <span>Create Post</span>
-                  <Sparkles className="h-4 w-4 text-primary-foreground/80 animate-pulse" />
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" asChild>
+                <Link href="/about" className="gap-2">
+                  About
+                </Link>
+              </Button>
+              {user ? (
+                <>
+                  <Button variant="ghost" asChild>
+                    <Link href="/profile" className="gap-2">
+                      <UserCircle className="h-4 w-4" />
+                      Profile
+                    </Link>
+                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className="gap-2 group">
+                        <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                        <span>Create Post</span>
+                        <Sparkles className="h-4 w-4 text-primary-foreground/80 animate-pulse" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <PostForm />
+                    </DialogContent>
+                  </Dialog>
+                </>
+              ) : (
+                <Button variant="default" asChild>
+                  <Link href="/auth" className="gap-2">
+                    <LogIn className="h-4 w-4" />
+                    Login
+                  </Link>
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <PostForm />
-              </DialogContent>
-            </Dialog>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Main Content - Scrollable with sticky search */}
         <div className="pt-16"> {/* Offset for fixed header */}
           {/* Welcome Section - Scrollable */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -91,7 +116,7 @@ export default function HomePage() {
           >
             <div className="container mx-auto px-4">
               <div className="max-w-2xl">
-                <motion.h1 
+                <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.6 }}
@@ -99,7 +124,7 @@ export default function HomePage() {
                 >
                   Welcome to Mero KamKotha
                 </motion.h1>
-                <motion.p 
+                <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4, duration: 0.6 }}
@@ -122,7 +147,7 @@ export default function HomePage() {
                 className="rounded-lg bg-card/30 backdrop-blur-sm border border-muted-foreground/10 p-4"
               >
                 <div className="flex flex-col md:flex-row gap-4 items-center">
-                  <motion.div 
+                  <motion.div
                     className="relative flex-1 w-full md:w-auto group"
                     whileHover={{ scale: 1.02 }}
                     transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -140,27 +165,27 @@ export default function HomePage() {
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <Tabs 
-                      value={postType} 
+                    <Tabs
+                      value={postType}
                       onValueChange={(v) => setPostType(v as any)}
                       className="w-full md:w-auto"
                     >
                       <TabsList className="grid w-full grid-cols-3 h-11 p-1 bg-muted/50 backdrop-blur-sm">
-                        <TabsTrigger 
-                          value="all" 
+                        <TabsTrigger
+                          value="all"
                           className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-colors duration-200"
                         >
                           All
                         </TabsTrigger>
-                        <TabsTrigger 
-                          value="room" 
+                        <TabsTrigger
+                          value="room"
                           className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-colors duration-200"
                         >
                           <Building2 className="h-4 w-4" />
                           Rooms
                         </TabsTrigger>
-                        <TabsTrigger 
-                          value="job" 
+                        <TabsTrigger
+                          value="job"
                           className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-colors duration-200"
                         >
                           <Briefcase className="h-4 w-4" />
@@ -184,8 +209,8 @@ export default function HomePage() {
                 className="flex items-center justify-between"
               >
                 <h2 className="text-2xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                  {postType === "all" ? "All Posts" : 
-                   postType === "room" ? "Room Listings" : "Job Opportunities"}
+                  {postType === "all" ? "All Posts" :
+                    postType === "room" ? "Room Listings" : "Job Opportunities"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   Showing {filteredPosts.length} {filteredPosts.length === 1 ? 'post' : 'posts'}
@@ -193,7 +218,7 @@ export default function HomePage() {
               </motion.div>
 
               <AnimatePresence mode="popLayout">
-                <motion.div 
+                <motion.div
                   layout
                   className="space-y-6 max-w-3xl mx-auto"
                 >
@@ -216,8 +241,8 @@ export default function HomePage() {
                       <div className="bg-muted/50 rounded-lg p-8 text-center">
                         <h3 className="text-lg font-semibold mb-2">No posts found</h3>
                         <p className="text-muted-foreground mb-4">
-                          {search ? 
-                            "Try adjusting your search terms or filters" : 
+                          {search ?
+                            "Try adjusting your search terms or filters" :
                             "Be the first to create a post!"}
                         </p>
                         <Dialog>
