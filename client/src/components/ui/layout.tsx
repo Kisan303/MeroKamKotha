@@ -1,13 +1,15 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Button } from "./button";
-import { UserCircle, Mail, Github, Plus, Sparkles } from "lucide-react";
+import { UserCircle, Mail, Github, Plus, Sparkles, LogOut } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PostForm } from "@/components/posts/post-form";
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
+
+  const isProfilePage = location === "/profile";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -33,18 +35,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     Profile
                   </Button>
                 </Link>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button className="gap-2 group">
-                      <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
-                      <span>Create Post</span>
-                      <Sparkles className="h-4 w-4 text-primary-foreground/80 animate-pulse" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <PostForm />
-                  </DialogContent>
-                </Dialog>
+                {isProfilePage ? (
+                  <Button 
+                    variant="default"
+                    className="gap-2"
+                    onClick={() => logoutMutation.mutate()}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </Button>
+                ) : (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className="gap-2 group">
+                        <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                        <span>Create Post</span>
+                        <Sparkles className="h-4 w-4 text-primary-foreground/80 animate-pulse" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <PostForm />
+                    </DialogContent>
+                  </Dialog>
+                )}
               </>
             ) : (
               <Button variant="default" asChild>
