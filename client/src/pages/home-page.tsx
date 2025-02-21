@@ -38,28 +38,8 @@ export default function HomePage() {
       );
     });
 
-    socket.on("post-updated", (updatedPost: PostWithUsername) => {
-      console.log("Post updated:", updatedPost);
-      queryClient.setQueryData<PostWithUsername[]>(
-        ["/api/posts"],
-        (old = []) => old?.map(post => 
-          post.id === updatedPost.id ? updatedPost : post
-        ) || []
-      );
-    });
-
-    socket.on("post-deleted", (deletedPostId: number) => {
-      console.log("Post deleted:", deletedPostId);
-      queryClient.setQueryData<PostWithUsername[]>(
-        ["/api/posts"],
-        (old = []) => old.filter(post => post.id !== deletedPostId)
-      );
-    });
-
     return () => {
       socket.off("new-post");
-      socket.off("post-updated");
-      socket.off("post-deleted");
     };
   }, []);
 
@@ -79,7 +59,7 @@ export default function HomePage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <div className="min-h-screen bg-gradient-to-b from-background via-background/80 to-muted/20">
         {/* Hero Section */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -129,51 +109,63 @@ export default function HomePage() {
         </motion.div>
 
         {/* Fixed Search and Filter Section */}
-        <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-muted-foreground/10 py-4 shadow-sm">
-          <div className="container mx-auto px-4">
+        <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-muted-foreground/10">
+          <div className="container mx-auto p-4">
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.6 }}
-              className="flex flex-col md:flex-row gap-4 items-center"
+              transition={{ delay: 0.4 }}
+              className="rounded-lg bg-card/30 backdrop-blur-sm border border-muted-foreground/10 p-4"
             >
-              <div className="relative flex-1 w-full md:w-auto group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors group-hover:text-primary" />
-                <Input
-                  placeholder="Search posts..."
-                  className="pl-9 transition-all border-muted-foreground/20 hover:border-primary/50 focus:border-primary w-full md:w-[400px]"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                <motion.div 
+                  className="relative flex-1 w-full md:w-auto group"
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors group-hover:text-primary" />
+                  <Input
+                    placeholder="Search posts..."
+                    className="pl-9 pr-4 h-11 transition-all border-muted-foreground/20 hover:border-primary/50 focus:border-primary w-full md:w-[400px] bg-background/50"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </motion.div>
+                <motion.div
+                  initial={{ scale: 0.95 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <Tabs 
+                    value={postType} 
+                    onValueChange={(v) => setPostType(v as any)}
+                    className="w-full md:w-auto"
+                  >
+                    <TabsList className="grid w-full grid-cols-3 h-11 p-1 bg-muted/50 backdrop-blur-sm">
+                      <TabsTrigger 
+                        value="all" 
+                        className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-colors duration-200"
+                      >
+                        All
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="room" 
+                        className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-colors duration-200"
+                      >
+                        <Building2 className="h-4 w-4" />
+                        Rooms
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="job" 
+                        className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-colors duration-200"
+                      >
+                        <Briefcase className="h-4 w-4" />
+                        Jobs
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </motion.div>
               </div>
-              <Tabs 
-                value={postType} 
-                onValueChange={(v) => setPostType(v as any)}
-                className="w-full md:w-auto bg-card/50 rounded-lg p-1"
-              >
-                <TabsList className="grid w-full grid-cols-3 h-9">
-                  <TabsTrigger 
-                    value="all" 
-                    className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
-                  >
-                    All
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="room" 
-                    className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
-                  >
-                    <Building2 className="h-4 w-4" />
-                    Rooms
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="job" 
-                    className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
-                  >
-                    <Briefcase className="h-4 w-4" />
-                    Jobs
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
             </motion.div>
           </div>
         </div>
@@ -207,7 +199,7 @@ export default function HomePage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    transition={{ delay: index * 0.1, duration: 0.4 }}
+                    transition={{ delay: index * 0.1 }}
                   >
                     <PostCard post={post} />
                   </motion.div>

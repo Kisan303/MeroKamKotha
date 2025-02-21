@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { Bookmark, MessageSquare, Clock, UserCircle, MoreVertical, Edit, Trash } from "lucide-react";
 import type { Post, Comment } from "@shared/schema";
@@ -295,29 +295,34 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="flex overflow-x-auto gap-4 mb-4 pb-2 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent"
+              className="relative"
             >
-              {post.images.map((image, i) => (
-                <motion.div
-                  key={i}
-                  whileHover={{ scale: 1.02 }}
-                  className="relative flex-none"
-                >
-                  <img
-                    src={image}
-                    alt={`Room ${i + 1}`}
-                    className="rounded-lg object-cover w-72 h-48 transition-all duration-300 hover:brightness-110"
-                  />
-                  <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-black/10" />
-                </motion.div>
-              ))}
+              <ScrollArea className="w-full pb-2">
+                <div className="flex gap-4">
+                  {post.images.map((image, i) => (
+                    <motion.div
+                      key={i}
+                      whileHover={{ scale: 1.02 }}
+                      className="relative flex-none first:pl-0 last:pr-0"
+                    >
+                      <img
+                        src={image}
+                        alt={`Room ${i + 1}`}
+                        className="rounded-lg object-cover w-72 h-48 transition-all duration-300 hover:brightness-110"
+                      />
+                      <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-black/10" />
+                    </motion.div>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
             </motion.div>
           )}
           <motion.div
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="flex gap-4 text-sm text-muted-foreground"
+            className="flex gap-4 text-sm text-muted-foreground mt-4"
           >
             <span className="flex items-center gap-1">
               📍 {post.location}
@@ -332,15 +337,15 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
 
         <Separator />
 
-        <CardFooter className="pt-4 flex flex-col gap-4">
+        <CardFooter className="pt-4">
           <motion.div
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="flex gap-4 w-full"
+            className="w-full space-y-4"
           >
-            {user && post.userId !== user.id && (
-              <>
+            <div className="flex gap-4">
+              {user && post.userId !== user.id && (
                 <Button
                   variant={isBookmarked ? "default" : "ghost"}
                   size="sm"
@@ -363,104 +368,84 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
                     {isBookmarked ? "Saved" : "Save"}
                   </span>
                 </Button>
-
-                <AlertDialog open={showUnsaveConfirm} onOpenChange={setShowUnsaveConfirm}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Unsave Post</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to remove this post from your saved posts?
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => {
-                          setShowUnsaveConfirm(false);
-                          bookmarkMutation.mutate();
-                        }}
-                      >
-                        Unsave
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex gap-2"
-              disabled={!user}
-              onClick={() => setShowComments(!showComments)}
-            >
-              <MessageSquare className="h-4 w-4" />
-              {commentsLoading ? "..." : comments.length}
-            </Button>
-          </motion.div>
-
-          <AnimatePresence>
-            {showComments && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3 }}
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex gap-2"
+                disabled={!user}
+                onClick={() => setShowComments(!showComments)}
               >
-                <ScrollArea className="h-[400px] w-full rounded-md border p-4">
-                  {commentsLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <p className="text-sm text-muted-foreground">Loading comments...</p>
-                    </div>
-                  ) : comments.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-2">
-                      <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
-                      <p className="text-sm text-muted-foreground text-center">
-                        No comments yet.
-                      </p>
-                      <p className="text-xs text-muted-foreground text-center">
-                        Be the first to share your thoughts!
-                      </p>
-                    </div>
-                  ) : (
-                    topLevelComments.map((comment) => (
-                      <CommentThread
-                        key={comment.id}
-                        comment={comment}
-                        replies={comments}
-                        currentUser={user}
-                        postId={post.id}
-                      />
-                    ))
-                  )}
-                </ScrollArea>
+                <MessageSquare className="h-4 w-4" />
+                {commentsLoading ? "..." : comments.length}
+              </Button>
+            </div>
 
-                {user && (
-                  <div className="flex gap-2 w-full">
-                    <Input
-                      placeholder="Write a comment..."
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      className="flex-1"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey && comment.trim()) {
-                          e.preventDefault();
-                          commentMutation.mutate();
-                        }
-                      }}
-                    />
-                    <Button
-                      onClick={() => commentMutation.mutate()}
-                      disabled={!comment.trim() || commentMutation.isPending}
-                      className="whitespace-nowrap"
-                    >
-                      {commentMutation.isPending ? "Posting..." : "Post Comment"}
-                    </Button>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <AnimatePresence>
+              {showComments && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <ScrollArea className="h-[300px] w-full rounded-md border p-4">
+                    {commentsLoading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-sm text-muted-foreground">Loading comments...</p>
+                      </div>
+                    ) : comments.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full gap-2">
+                        <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
+                        <p className="text-sm text-muted-foreground text-center">
+                          No comments yet.
+                        </p>
+                        <p className="text-xs text-muted-foreground text-center">
+                          Be the first to share your thoughts!
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {topLevelComments.map((comment) => (
+                          <CommentThread
+                            key={comment.id}
+                            comment={comment}
+                            replies={comments}
+                            currentUser={user}
+                            postId={post.id}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+
+                  {user && (
+                    <div className="flex gap-2 w-full mt-4">
+                      <Input
+                        placeholder="Write a comment..."
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        className="flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey && comment.trim()) {
+                            e.preventDefault();
+                            commentMutation.mutate();
+                          }
+                        }}
+                      />
+                      <Button
+                        onClick={() => commentMutation.mutate()}
+                        disabled={!comment.trim() || commentMutation.isPending}
+                        className="whitespace-nowrap"
+                      >
+                        {commentMutation.isPending ? "Posting..." : "Post Comment"}
+                      </Button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </CardFooter>
 
         {/* Add Edit Dialog */}
