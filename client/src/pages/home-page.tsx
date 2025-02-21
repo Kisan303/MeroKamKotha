@@ -128,53 +128,66 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-grid-white/10 bg-[size:30px_30px] pointer-events-none" />
         </motion.div>
 
-        <div className="container mx-auto px-4 py-8 space-y-8">
-          {/* Search and Filter Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="bg-card rounded-lg p-6 shadow-sm backdrop-blur-sm bg-white/50 dark:bg-black/50"
-          >
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1 group">
+        {/* Fixed Search and Filter Section */}
+        <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-muted-foreground/10 py-4 shadow-sm">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="flex flex-col md:flex-row gap-4 items-center"
+            >
+              <div className="relative flex-1 w-full md:w-auto group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors group-hover:text-primary" />
                 <Input
                   placeholder="Search posts..."
-                  className="pl-9 transition-all border-muted-foreground/20 hover:border-primary/50 focus:border-primary"
+                  className="pl-9 transition-all border-muted-foreground/20 hover:border-primary/50 focus:border-primary w-full md:w-[400px]"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
               <Tabs 
                 value={postType} 
-                onValueChange={(v) => setPostType(v as any)} 
-                className="w-full md:w-auto"
+                onValueChange={(v) => setPostType(v as any)}
+                className="w-full md:w-auto bg-card/50 rounded-lg p-1"
               >
-                <TabsList className="grid w-full md:w-auto grid-cols-3 h-10">
-                  <TabsTrigger value="all" className="px-4">All</TabsTrigger>
-                  <TabsTrigger value="room" className="px-4 gap-2">
+                <TabsList className="grid w-full grid-cols-3 h-9">
+                  <TabsTrigger 
+                    value="all" 
+                    className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+                  >
+                    All
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="room" 
+                    className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+                  >
                     <Building2 className="h-4 w-4" />
                     Rooms
                   </TabsTrigger>
-                  <TabsTrigger value="job" className="px-4 gap-2">
+                  <TabsTrigger 
+                    value="job" 
+                    className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+                  >
                     <Briefcase className="h-4 w-4" />
                     Jobs
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
+        </div>
 
-          {/* Results Section */}
-          <div className="space-y-4">
+        {/* Results Section */}
+        <div className="container mx-auto px-4 py-8">
+          <div className="space-y-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
               className="flex items-center justify-between"
             >
-              <h2 className="text-2xl font-semibold">
+              <h2 className="text-2xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
                 {postType === "all" ? "All Posts" : 
                  postType === "room" ? "Room Listings" : "Job Opportunities"}
               </h2>
@@ -183,10 +196,10 @@ export default function HomePage() {
               </p>
             </motion.div>
 
-            <AnimatePresence>
+            <AnimatePresence mode="popLayout">
               <motion.div 
                 layout
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                className="space-y-6 max-w-3xl mx-auto"
               >
                 {filteredPosts.map((post, index) => (
                   <motion.div
@@ -203,7 +216,6 @@ export default function HomePage() {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="col-span-full"
                   >
                     <div className="bg-muted/50 rounded-lg p-8 text-center">
                       <h3 className="text-lg font-semibold mb-2">No posts found</h3>
