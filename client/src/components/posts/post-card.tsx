@@ -221,7 +221,7 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
       whileHover={{ y: -4 }}
       className="will-change-transform"
     >
-      <Card className="relative overflow-hidden bg-gradient-to-br from-white/40 to-white/10 dark:from-gray-900/40 dark:to-gray-900/10 backdrop-blur-md border border-white/20 dark:border-gray-800/20 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:translate-y-[-2px]">
+      <Card className="relative overflow-hidden bg-gradient-to-br from-card to-muted/5 border-muted-foreground/10 hover:border-primary/20 transition-colors">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <motion.div
