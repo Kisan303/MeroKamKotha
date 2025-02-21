@@ -8,13 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Building2, Briefcase, Sparkles, UserCircle, LogIn, LogOut } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Search, Plus, Building2, Briefcase, Sparkles, UserCircle, LogIn } from "lucide-react";
 import { socket } from "@/lib/socket";
 import { queryClient } from "@/lib/queryClient";
 import type { Post } from "@shared/schema";
@@ -24,7 +18,7 @@ import { Link } from "wouter";
 type PostWithUsername = Post & { username?: string };
 
 export default function HomePage() {
-  const { user, logoutMutation } = useAuth();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [postType, setPostType] = useState<"all" | "room" | "job">("all");
 
@@ -61,8 +55,6 @@ export default function HomePage() {
     return matchesSearch && matchesType;
   });
 
-  if (!user) return null;
-
   return (
     <Layout>
       <div className="min-h-screen">
@@ -80,20 +72,12 @@ export default function HomePage() {
               </Button>
               {user ? (
                 <>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="gap-2">
-                        <UserCircle className="h-4 w-4" />
-                        Profile
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => logoutMutation.mutate()} className="text-red-500 focus:text-red-500">
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Logout
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button variant="ghost" asChild>
+                    <Link href="/profile" className="gap-2">
+                      <UserCircle className="h-4 w-4" />
+                      Profile
+                    </Link>
+                  </Button>
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button className="gap-2 group">

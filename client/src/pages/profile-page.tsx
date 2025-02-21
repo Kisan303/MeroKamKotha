@@ -6,7 +6,7 @@ import { PostForm } from "@/components/posts/post-form";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Bookmark, Building2, Briefcase, UserCircle, ChevronRight } from "lucide-react";
+import { PlusCircle, Bookmark, Building2, Briefcase, UserCircle, ChevronRight, LogOut } from "lucide-react";
 import type { Post } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,7 +29,7 @@ const item = {
 };
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
 
   const { data: posts = [] } = useQuery<PostWithUsername[]>({
     queryKey: ["/api/posts"],
@@ -79,7 +79,15 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-4">
+                <CardContent className="pt-4 space-y-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2 group"
+                    onClick={() => logoutMutation.mutate()}
+                  >
+                    <LogOut className="h-4 w-4 text-red-500" />
+                    Logout
+                  </Button>
                   <Button variant="outline" className="w-full gap-2 group">
                     Edit Profile
                     <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
