@@ -59,7 +59,7 @@ export default function HomePage() {
 
   return (
     <Layout>
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-gradient-to-br from-background via-purple-50/5 to-primary/5">
         {/* Navigation Header - Fixed */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-b border-muted-foreground/10">
           <div className="container mx-auto h-16 flex items-center justify-between px-4">
@@ -82,10 +82,10 @@ export default function HomePage() {
                   </Button>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button className="gap-2 group">
+                      <Button className="gap-2 group bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg shadow-primary/20 transition-all duration-300">
                         <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
                         <span>Create Post</span>
-                        <Sparkles className="h-4 w-4 text-primary-foreground/80 animate-pulse" />
+                        <Sparkles className="h-4 w-4 text-white/80 animate-pulse" />
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
@@ -94,7 +94,11 @@ export default function HomePage() {
                   </Dialog>
                 </>
               ) : (
-                <Button variant="default" asChild>
+                <Button 
+                  variant="default" 
+                  asChild
+                  className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg shadow-primary/20"
+                >
                   <Link href="/auth" className="gap-2">
                     <LogIn className="h-4 w-4" />
                     Login
@@ -112,7 +116,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="relative bg-gradient-to-r from-primary/10 via-primary/5 to-transparent py-16"
+            className="relative bg-gradient-to-r from-primary/10 via-purple-500/5 to-transparent py-16"
           >
             <div className="container mx-auto px-4">
               <div className="max-w-2xl">
@@ -120,7 +124,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.6 }}
-                  className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent"
+                  className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary via-purple-500 to-primary/60 bg-clip-text text-transparent"
                 >
                   Welcome to Mero KamKotha
                 </motion.h1>
@@ -144,7 +148,7 @@ export default function HomePage() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="rounded-lg bg-card/30 backdrop-blur-sm border border-muted-foreground/10 p-4"
+                className="rounded-xl bg-gradient-to-br from-white/40 to-white/10 dark:from-gray-900/40 dark:to-gray-900/10 backdrop-blur-md border border-white/20 dark:border-gray-800/20 shadow-xl p-4 transform hover:scale-[1.01] transition-all duration-300"
               >
                 <div className="flex flex-col md:flex-row gap-4 items-center">
                   <motion.div
@@ -155,7 +159,7 @@ export default function HomePage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors group-hover:text-primary" />
                     <Input
                       placeholder="Search posts..."
-                      className="pl-9 pr-4 h-11 transition-all border-muted-foreground/20 hover:border-primary/50 focus:border-primary w-full md:w-[400px] bg-background/50"
+                      className="pl-9 pr-4 h-11 transition-all border-muted-foreground/20 hover:border-primary/50 focus:border-primary w-full md:w-[400px] bg-white/20 dark:bg-gray-900/20 backdrop-blur-sm"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
@@ -170,23 +174,23 @@ export default function HomePage() {
                       onValueChange={(v) => setPostType(v as any)}
                       className="w-full md:w-auto"
                     >
-                      <TabsList className="grid w-full grid-cols-3 h-11 p-1 bg-muted/50 backdrop-blur-sm">
+                      <TabsList className="grid w-full grid-cols-3 h-11 p-1 bg-white/20 dark:bg-gray-900/20 backdrop-blur-sm rounded-lg">
                         <TabsTrigger
                           value="all"
-                          className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-colors duration-200"
+                          className="data-[state=active]:bg-primary data-[state=active]:text-white transition-all duration-300"
                         >
                           All
                         </TabsTrigger>
                         <TabsTrigger
                           value="room"
-                          className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-colors duration-200"
+                          className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-white transition-all duration-300"
                         >
                           <Building2 className="h-4 w-4" />
                           Rooms
                         </TabsTrigger>
                         <TabsTrigger
                           value="job"
-                          className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-colors duration-200"
+                          className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-white transition-all duration-300"
                         >
                           <Briefcase className="h-4 w-4" />
                           Jobs
@@ -208,7 +212,7 @@ export default function HomePage() {
                 transition={{ delay: 0.6 }}
                 className="flex items-center justify-between"
               >
-                <h2 className="text-2xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+                <h2 className="text-2xl font-semibold bg-gradient-to-r from-primary via-purple-500 to-primary/60 bg-clip-text text-transparent">
                   {postType === "all" ? "All Posts" :
                     postType === "room" ? "Room Listings" : "Job Opportunities"}
                 </h2>
@@ -220,7 +224,7 @@ export default function HomePage() {
               <AnimatePresence mode="popLayout">
                 <motion.div
                   layout
-                  className="space-y-6 max-w-3xl mx-auto"
+                  className="grid grid-cols-1 gap-6 max-w-3xl mx-auto"
                 >
                   {filteredPosts.map((post, index) => (
                     <motion.div
@@ -229,6 +233,7 @@ export default function HomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ delay: index * 0.1 }}
+                      className="transform hover:scale-[1.02] transition-all duration-300"
                     >
                       <PostCard post={post} />
                     </motion.div>
@@ -238,8 +243,8 @@ export default function HomePage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
-                      <div className="bg-muted/50 rounded-lg p-8 text-center">
-                        <h3 className="text-lg font-semibold mb-2">No posts found</h3>
+                      <div className="bg-gradient-to-br from-white/40 to-white/10 dark:from-gray-900/40 dark:to-gray-900/10 backdrop-blur-md border border-white/20 dark:border-gray-800/20 rounded-xl p-8 text-center shadow-xl">
+                        <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">No posts found</h3>
                         <p className="text-muted-foreground mb-4">
                           {search ?
                             "Try adjusting your search terms or filters" :
@@ -247,7 +252,7 @@ export default function HomePage() {
                         </p>
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button className="gap-2">
+                            <Button className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg shadow-primary/20">
                               <Plus className="h-4 w-4" />
                               Create New Post
                             </Button>
