@@ -59,7 +59,7 @@ export default function HomePage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-background via-purple-50/5 to-primary/5">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background/80 to-primary/5">
         {/* Navigation Header - Fixed */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-b border-muted-foreground/10">
           <div className="container mx-auto h-16 flex items-center justify-between px-4">
@@ -116,7 +116,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="relative bg-gradient-to-r from-primary/10 via-purple-500/5 to-transparent py-16"
+            className="relative bg-gradient-to-r from-primary/10 via-background to-transparent py-16"
           >
             <div className="container mx-auto px-4">
               <div className="max-w-2xl">
@@ -124,7 +124,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.6 }}
-                  className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary via-purple-500 to-primary/60 bg-clip-text text-transparent"
+                  className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent"
                 >
                   Welcome to Mero KamKotha
                 </motion.h1>
@@ -212,7 +212,7 @@ export default function HomePage() {
                 transition={{ delay: 0.6 }}
                 className="flex items-center justify-between"
               >
-                <h2 className="text-2xl font-semibold bg-gradient-to-r from-primary via-purple-500 to-primary/60 bg-clip-text text-transparent">
+                <h2 className="text-2xl font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                   {postType === "all" ? "All Posts" :
                     postType === "room" ? "Room Listings" : "Job Opportunities"}
                 </h2>
@@ -244,7 +244,9 @@ export default function HomePage() {
                       animate={{ opacity: 1 }}
                     >
                       <div className="bg-gradient-to-br from-white/40 to-white/10 dark:from-gray-900/40 dark:to-gray-900/10 backdrop-blur-md border border-white/20 dark:border-gray-800/20 rounded-xl p-8 text-center shadow-xl">
-                        <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">No posts found</h3>
+                        <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                          No posts found
+                        </h3>
                         <p className="text-muted-foreground mb-4">
                           {search ?
                             "Try adjusting your search terms or filters" :
