@@ -2,7 +2,14 @@ import { Layout } from "@/components/ui/layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Mail, Github, LinkedinIcon, Code2, Database, Server } from "lucide-react";
+import {
+  Mail,
+  Github,
+  LinkedinIcon,
+  Code2,
+  Database,
+  Server,
+} from "lucide-react";
 
 export default function AboutPage() {
   return (
@@ -21,8 +28,9 @@ export default function AboutPage() {
                 About Mero KamKotha
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed">
-                A modern platform connecting people with rooms and job opportunities,
-                built with cutting-edge technologies and user experience in mind.
+                A modern platform connecting people with rooms and job
+                opportunities, built with cutting-edge technologies and user
+                experience in mind.
               </p>
             </motion.div>
           </div>
@@ -49,12 +57,15 @@ export default function AboutPage() {
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-semibold text-primary">Kisan Rai</h3>
-                    <p className="text-sm text-muted-foreground">Full Stack Software Developer</p>
+                    <p className="text-sm text-muted-foreground">
+                      Full Stack Software Developer
+                    </p>
                   </div>
 
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">
-                      "I'm passionate about creating seamless user experiences and solving real-world problems through technology."
+                      "I'm passionate about creating seamless user experiences
+                      and solving real-world problems through technology."
                     </p>
                   </div>
 
@@ -65,13 +76,21 @@ export default function AboutPage() {
                     </Button>
                     <Button variant="outline" size="sm" className="gap-2">
                       <Github className="h-4 w-4" />
-                      <a href="https://github.com/yourusername" target="_blank" rel="noopener noreferrer">
+                      <a
+                        href="https://github.com/Kisan303"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         Github
                       </a>
                     </Button>
                     <Button variant="outline" size="sm" className="gap-2">
                       <LinkedinIcon className="h-4 w-4" />
-                      <a href="https://linkedin.com/in/yourusername" target="_blank" rel="noopener noreferrer">
+                      <a
+                        href="https://www.linkedin.com/in/kisanrai/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         LinkedIn
                       </a>
                     </Button>
@@ -82,9 +101,8 @@ export default function AboutPage() {
 
             <div className="relative aspect-square rounded-full overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
               <div className="absolute inset-2 rounded-full overflow-hidden bg-muted">
-                {/* Replace with your actual image */}
                 <img
-                  src="/placeholder-portrait.jpg"
+                  src="https://raw.githubusercontent.com/Kisan303/SocialLink/main/img/Profile2.0.jpg"
                   alt="Kisan Rai"
                   className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity"
                 />
@@ -114,7 +132,8 @@ export default function AboutPage() {
                   </div>
                   <h3 className="text-xl font-semibold">Modern Frontend</h3>
                   <p className="text-sm text-muted-foreground">
-                    Built with React and TypeScript for a responsive and type-safe user experience
+                    Built with React and TypeScript for a responsive and
+                    type-safe user experience
                   </p>
                 </div>
               </Card>
@@ -162,13 +181,17 @@ export default function AboutPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {[
                 { name: "React", desc: "Frontend Framework", color: "blue" },
-                { name: "TypeScript", desc: "Programming Language", color: "indigo" },
+                {
+                  name: "TypeScript",
+                  desc: "Programming Language",
+                  color: "indigo",
+                },
                 { name: "Express", desc: "Backend Framework", color: "green" },
                 { name: "PostgreSQL", desc: "Database", color: "cyan" },
                 { name: "Drizzle ORM", desc: "Database ORM", color: "orange" },
                 { name: "Socket.IO", desc: "Real-time Updates", color: "red" },
                 { name: "TailwindCSS", desc: "Styling", color: "teal" },
-                { name: "shadcn/ui", desc: "UI Components", color: "violet" }
+                { name: "shadcn/ui", desc: "UI Components", color: "violet" },
               ].map((tech, i) => (
                 <motion.div
                   key={tech.name}
@@ -176,7 +199,9 @@ export default function AboutPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * i }}
                 >
-                  <Card className={`p-4 bg-gradient-to-br from-${tech.color}-500/10 to-${tech.color}-500/5 hover:shadow-md transition-all hover:-translate-y-1`}>
+                  <Card
+                    className={`p-4 bg-gradient-to-br from-${tech.color}-500/10 to-${tech.color}-500/5 hover:shadow-md transition-all hover:-translate-y-1`}
+                  >
                     <h3 className="font-semibold">{tech.name}</h3>
                     <p className="text-sm text-muted-foreground">{tech.desc}</p>
                   </Card>
