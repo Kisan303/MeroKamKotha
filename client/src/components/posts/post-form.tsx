@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -52,6 +52,16 @@ export function PostForm({ initialData, onSuccess }: {
 
   const postType = form.watch("type");
 
+  // Effect to handle room type changes
+  useEffect(() => {
+    if (postType === "job") {
+      setPreviews([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }, [postType]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
@@ -65,9 +75,6 @@ export function PostForm({ initialData, onSuccess }: {
       });
       return;
     }
-
-    // Clear existing previews if any files are selected
-    setPreviews([]);
 
     // Process each file
     Array.from(files).forEach((file) => {
@@ -83,12 +90,24 @@ export function PostForm({ initialData, onSuccess }: {
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        setPreviews((prev) => {
-          if (e.target?.result && !prev.includes(e.target.result as string)) {
-            return [...prev, e.target.result as string];
-          }
-          return prev;
-        });
+        if (e.target?.result) {
+          setPreviews((prev) => {
+            // Check if we already have this image
+            if (prev.includes(e.target!.result as string)) {
+              return prev;
+            }
+            // Limit to 5 images
+            if (prev.length >= 5) {
+              toast({
+                title: "Error",
+                description: "Maximum 5 images allowed",
+                variant: "destructive",
+              });
+              return prev;
+            }
+            return [...prev, e.target!.result as string];
+          });
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -97,17 +116,17 @@ export function PostForm({ initialData, onSuccess }: {
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
       try {
-        console.log("Starting post creation with data:", data);
+        console.log("Form submitted with data:", data);
 
         // For room posts, validate images
-        if (data.type === "room" && (!previews || previews.length === 0)) {
+        if (data.type === "room" && previews.length === 0) {
           throw new Error("At least one image is required for room posts");
         }
 
-        // Create post with base64 images
+        // Prepare the post data
         const postData = {
           ...data,
-          images: data.type === "room" ? previews : undefined
+          images: data.type === "room" ? previews : []
         };
 
         console.log("Sending post data:", postData);
@@ -143,7 +162,6 @@ export function PostForm({ initialData, onSuccess }: {
       onSuccess?.();
     },
     onError: (error: Error) => {
-      console.error("Create post error:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -166,7 +184,10 @@ export function PostForm({ initialData, onSuccess }: {
     }
 
     try {
-      await createMutation.mutateAsync(data);
+      await createMutation.mutateAsync({
+        ...data,
+        images: previews
+      });
     } catch (error) {
       console.error("Submit error:", error);
     }
@@ -326,9 +347,6 @@ export function PostForm({ initialData, onSuccess }: {
                                 className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={() => {
                                   setPreviews(previews.filter((_, i) => i !== index));
-                                  if (fileInputRef.current) {
-                                    fileInputRef.current.value = "";
-                                  }
                                 }}
                               >
                                 <X className="h-4 w-4" />
