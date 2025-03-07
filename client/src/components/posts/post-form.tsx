@@ -5,11 +5,12 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertPostSchema, type InsertPost } from "@shared/schema";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, X, ImagePlus, Building2, Briefcase, DollarSign, MapPin } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Form,
   FormControl,
@@ -198,11 +199,11 @@ export function PostForm({ initialData, onSuccess }: {
         </DialogTitle>
 
         <Form {...form}>
-          <form 
+          <form
             onSubmit={(e) => {
               console.log("Raw form submit event triggered");
               form.handleSubmit(onSubmit)(e);
-            }} 
+            }}
             className="space-y-6"
           >
             <FormField
@@ -243,10 +244,10 @@ export function PostForm({ initialData, onSuccess }: {
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder={postType === "room" ? "e.g., Cozy Studio in Downtown" : "e.g., Senior Software Engineer"} 
+                    <Input
+                      placeholder={postType === "room" ? "e.g., Cozy Studio in Downtown" : "e.g., Senior Software Engineer"}
                       className="bg-background/50 backdrop-blur-sm border-muted-foreground/20"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -327,10 +328,10 @@ export function PostForm({ initialData, onSuccess }: {
                         Location
                       </FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="City, State or Address" 
+                        <Input
+                          placeholder="City, State or Address"
                           className="bg-background/50 backdrop-blur-sm border-muted-foreground/20"
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormDescription>
@@ -434,10 +435,7 @@ export function PostForm({ initialData, onSuccess }: {
               className="flex gap-4 justify-end"
             >
               <DialogClose ref={closeButtonRef} asChild>
-                <Button 
-                  type="button" 
-                  variant="outline"
-                >
+                <Button type="button" variant="outline">
                   Cancel
                 </Button>
               </DialogClose>
