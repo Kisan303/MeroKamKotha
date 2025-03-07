@@ -8,7 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Building2, Briefcase, Sparkles, UserCircle, LogIn } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Building2,
+  Briefcase,
+  Sparkles,
+  UserCircle,
+  LogIn,
+} from "lucide-react";
 import { socket } from "@/lib/socket";
 import { queryClient } from "@/lib/queryClient";
 import type { Post } from "@shared/schema";
@@ -31,10 +39,10 @@ export default function HomePage() {
       queryClient.setQueryData<PostWithUsername[]>(
         ["/api/posts"],
         (old = []) => {
-          const exists = old.some(p => p.id === newPost.id);
+          const exists = old.some((p) => p.id === newPost.id);
           if (exists) return old;
           return [newPost, ...old];
-        }
+        },
       );
     });
 
@@ -43,14 +51,15 @@ export default function HomePage() {
     };
   }, []);
 
-  const sortedPosts = [...posts].sort((a, b) =>
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  const sortedPosts = [...posts].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
   const filteredPosts = sortedPosts.filter((post) => {
-    const matchesSearch = post.title.toLowerCase().includes(search.toLowerCase()) ||
-                         post.description.toLowerCase().includes(search.toLowerCase()) ||
-                         post.location.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch =
+      post.title.toLowerCase().includes(search.toLowerCase()) ||
+      post.description.toLowerCase().includes(search.toLowerCase()) ||
+      post.location.toLowerCase().includes(search.toLowerCase());
     const matchesType = postType === "all" || post.type === postType;
     return matchesSearch && matchesType;
   });
@@ -104,7 +113,9 @@ export default function HomePage() {
         </div>
 
         {/* Main Content - Scrollable with sticky search */}
-        <div className="pt-16"> {/* Offset for fixed header */}
+        <div className="pt-0">
+          {" "}
+          {/* Offset for fixed header */}
           {/* Welcome Section - Scrollable */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -128,13 +139,13 @@ export default function HomePage() {
                   transition={{ delay: 0.4, duration: 0.6 }}
                   className="text-lg text-muted-foreground mb-6"
                 >
-                  Find your perfect room or dream job opportunity. Connect with property owners and employers in your area.
+                  Find your perfect room or dream job opportunity. Connect with
+                  property owners and employers in your area.
                 </motion.p>
               </div>
             </div>
             <div className="absolute inset-0 bg-grid-white/10 bg-[size:30px_30px] pointer-events-none" />
           </motion.div>
-
           {/* Search and Filter Section - Sticky */}
           <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-b border-muted-foreground/10">
             <div className="container mx-auto p-4">
@@ -196,7 +207,6 @@ export default function HomePage() {
               </motion.div>
             </div>
           </div>
-
           {/* Posts Section - Scrollable */}
           <div className="container mx-auto px-4 py-8">
             <div className="space-y-6">
@@ -207,19 +217,20 @@ export default function HomePage() {
                 className="flex items-center justify-between"
               >
                 <h2 className="text-2xl font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                  {postType === "all" ? "All Posts" :
-                    postType === "room" ? "Room Listings" : "Job Opportunities"}
+                  {postType === "all"
+                    ? "All Posts"
+                    : postType === "room"
+                      ? "Room Listings"
+                      : "Job Opportunities"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Showing {filteredPosts.length} {filteredPosts.length === 1 ? 'post' : 'posts'}
+                  Showing {filteredPosts.length}{" "}
+                  {filteredPosts.length === 1 ? "post" : "posts"}
                 </p>
               </motion.div>
 
               <AnimatePresence mode="popLayout">
-                <motion.div
-                  layout
-                  className="space-y-6 max-w-3xl mx-auto"
-                >
+                <motion.div layout className="space-y-6 max-w-3xl mx-auto">
                   {filteredPosts.map((post, index) => (
                     <motion.div
                       key={post.id}
@@ -237,11 +248,13 @@ export default function HomePage() {
                       animate={{ opacity: 1 }}
                     >
                       <div className="bg-muted/50 rounded-lg p-8 text-center">
-                        <h3 className="text-lg font-semibold mb-2">No posts found</h3>
+                        <h3 className="text-lg font-semibold mb-2">
+                          No posts found
+                        </h3>
                         <p className="text-muted-foreground mb-4">
-                          {search ?
-                            "Try adjusting your search terms or filters" :
-                            "Be the first to create a post!"}
+                          {search
+                            ? "Try adjusting your search terms or filters"
+                            : "Be the first to create a post!"}
                         </p>
                         <Dialog>
                           <DialogTrigger asChild>
