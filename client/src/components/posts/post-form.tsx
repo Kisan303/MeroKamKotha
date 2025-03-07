@@ -30,16 +30,6 @@ import {
 import { DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 
-const formVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
-};
-
-const inputVariants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: { opacity: 1, x: 0 }
-};
-
 export function PostForm({ initialData, onSuccess }: {
   initialData?: InsertPost & { id?: number };
   onSuccess?: () => void;
@@ -150,9 +140,7 @@ export function PostForm({ initialData, onSuccess }: {
           throw new Error(errorText || "Failed to create post");
         }
 
-        const result = await res.json();
-        console.log("Post created successfully:", result);
-        return result;
+        return await res.json();
       } catch (error) {
         console.error("Error in create mutation:", error);
         throw error;
@@ -181,23 +169,34 @@ export function PostForm({ initialData, onSuccess }: {
     },
   });
 
+  const onSubmit = async (data: InsertPost) => {
+    if (data.type === "room" && previews.length === 0) {
+      toast({
+        title: "Error",
+        description: "At least one image is required for room posts",
+        variant: "destructive",
+      });
+      return;
+    }
+    await createMutation.mutateAsync(data);
+  };
+
   return (
     <ScrollArea className="h-[80vh] w-full">
       <motion.div 
         className="space-y-6 px-6"
-        variants={formVariants}
-        initial="hidden"
-        animate="visible"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
       >
         <DialogTitle className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
           {initialData?.id ? "Edit Post" : "Create New Post"}
         </DialogTitle>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(createMutation.mutate)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <motion.div
-              variants={inputVariants}
-              initial="hidden"
-              animate="visible"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
               className="bg-gradient-to-br from-card to-muted/5 border border-muted-foreground/10 rounded-lg p-6 space-y-6"
             >
@@ -274,9 +273,8 @@ export function PostForm({ initialData, onSuccess }: {
             </motion.div>
 
             <motion.div
-              variants={inputVariants}
-              initial="hidden"
-              animate="visible"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
               className="grid grid-cols-2 gap-4"
             >
@@ -344,9 +342,8 @@ export function PostForm({ initialData, onSuccess }: {
 
             {postType === "room" && (
               <motion.div
-                variants={inputVariants}
-                initial="hidden"
-                animate="visible"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
                 className="bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent border border-muted-foreground/10 rounded-lg p-6"
               >
@@ -432,9 +429,8 @@ export function PostForm({ initialData, onSuccess }: {
             )}
 
             <motion.div
-              variants={inputVariants}
-              initial="hidden"
-              animate="visible"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
               className="flex gap-4 justify-end"
             >
