@@ -53,7 +53,6 @@ export function PostForm({ initialData, onSuccess }: {
 
   const postType = form.watch("type");
 
-  // Effect to handle room type changes
   useEffect(() => {
     if (postType === "job") {
       setPreviews([]);
@@ -116,18 +115,17 @@ export function PostForm({ initialData, onSuccess }: {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
+      console.log("Starting post creation with data:", data);
       try {
-        console.log("Form submitted with data:", data);
-
         // For room posts, validate images
         if (data.type === "room" && previews.length === 0) {
           throw new Error("At least one image is required for room posts");
         }
 
-        // Prepare the post data
+        // Prepare the post data with images if it's a room post
         const postData = {
           ...data,
-          images: data.type === "room" ? previews : []
+          images: data.type === "room" ? previews : [],
         };
 
         console.log("Sending post data:", postData);
@@ -136,11 +134,13 @@ export function PostForm({ initialData, onSuccess }: {
 
         if (!res.ok) {
           const errorText = await res.text();
-          console.error("Server response error:", errorText);
+          console.error("Server error response:", errorText);
           throw new Error(errorText || "Failed to create post");
         }
 
-        return await res.json();
+        const result = await res.json();
+        console.log("Post created successfully:", result);
+        return result;
       } catch (error) {
         console.error("Error in create mutation:", error);
         throw error;
@@ -161,24 +161,30 @@ export function PostForm({ initialData, onSuccess }: {
       onSuccess?.();
     },
     onError: (error: Error) => {
+      console.error("Mutation error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create post",
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = async (data: InsertPost) => {
-    if (data.type === "room" && previews.length === 0) {
-      toast({
-        title: "Error",
-        description: "At least one image is required for room posts",
-        variant: "destructive",
-      });
-      return;
+    console.log("Form submitted with data:", data);
+    try {
+      if (data.type === "room" && previews.length === 0) {
+        toast({
+          title: "Error",
+          description: "At least one image is required for room posts",
+          variant: "destructive",
+        });
+        return;
+      }
+      await createMutation.mutateAsync(data);
+    } catch (error) {
+      console.error("Submit error:", error);
     }
-    await createMutation.mutateAsync(data);
   };
 
   return (
