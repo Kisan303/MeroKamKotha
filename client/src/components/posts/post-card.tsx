@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { 
   Bookmark, 
@@ -25,6 +25,7 @@ import { socket } from "@/lib/socket";
 import { CommentThread } from './comment-thread';
 import { Input } from "@/components/ui/input";
 import { PostForm } from "./post-form";
+import { ImageSlider } from "./image-slider";
 import { AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -324,27 +325,7 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
               transition={{ delay: 0.4 }}
               className="relative -mx-6 px-6"
             >
-              <ScrollArea className="w-full">
-                <div className="flex gap-4 pb-4">
-                  {post.images.map((image, i) => (
-                    <motion.div
-                      key={i}
-                      whileHover={{ scale: 1.02 }}
-                      className="relative flex-none first:pl-0 last:pr-6"
-                    >
-                      <div className="relative w-72 h-48 overflow-hidden rounded-lg">
-                        <img
-                          src={image}
-                          alt={`Room ${i + 1}`}
-                          className="absolute inset-0 w-full h-full object-cover transition-all duration-300 hover:brightness-110"
-                        />
-                        <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-lg" />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-                <ScrollBar orientation="horizontal" className="invisible" />
-              </ScrollArea>
+              <ImageSlider images={post.images} />
             </motion.div>
           )}
 
