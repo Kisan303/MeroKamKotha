@@ -10,7 +10,10 @@ export default function ChatPage() {
   return (
     <div className="flex h-screen bg-background">
       <div className="w-80 flex-shrink-0 border-r">
-        <ChatList onSelectChat={setSelectedChat} />
+        <ChatList 
+          onSelectChat={setSelectedChat} 
+          selectedChatId={selectedChat?.id}
+        />
       </div>
       {selectedChat ? (
         <div className="flex-1 flex flex-col">

@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { type Chat, type User } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { Loader2, MessageSquare, MoreVertical, Trash2, Ban } from "lucide-react";
+import { Loader2, MessageSquare, MoreVertical, Trash2, Ban, CheckCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   DropdownMenu,
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type ChatWithParticipants = Chat & {
   participants: User[];
@@ -33,7 +34,10 @@ type ChatWithParticipants = Chat & {
   };
 };
 
-export function ChatList({ onSelectChat }: { onSelectChat: (chat: ChatWithParticipants) => void }) {
+export function ChatList({ onSelectChat, selectedChatId }: { 
+  onSelectChat: (chat: ChatWithParticipants) => void;
+  selectedChatId?: number;
+}) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [chatToDelete, setChatToDelete] = useState<number | null>(null);
@@ -96,8 +100,8 @@ export function ChatList({ onSelectChat }: { onSelectChat: (chat: ChatWithPartic
 
   return (
     <ScrollArea className="h-[calc(100vh-4rem)] border-r">
-      <div className="p-4 space-y-2">
-        <h2 className="text-lg font-semibold mb-4">Messages</h2>
+      <div className="p-4 space-y-1">
+        <h2 className="text-lg font-semibold px-2 mb-4">Messages</h2>
         {chats.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -106,38 +110,55 @@ export function ChatList({ onSelectChat }: { onSelectChat: (chat: ChatWithPartic
           </div>
         ) : (
           chats.map((chat) => {
-            // Find the other participant
-            const otherParticipant = chat.participants.find((p) => p.id !== currentUser?.id);
+            const otherParticipant = chat.participants.find(p => p.id !== currentUser?.id);
             if (!otherParticipant) return null;
 
             return (
               <div
                 key={chat.id}
-                className="w-full p-4 text-left hover:bg-accent rounded-lg transition-colors border border-border/50 hover:border-border relative group"
+                className={cn(
+                  "relative group",
+                  selectedChatId === chat.id && "bg-accent"
+                )}
               >
                 <div
-                  className="flex-1 cursor-pointer"
+                  className={cn(
+                    "p-3 flex items-start gap-3 hover:bg-accent/50 rounded-lg transition-colors cursor-pointer",
+                    selectedChatId === chat.id && "bg-accent"
+                  )}
                   onClick={() => onSelectChat(chat)}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base font-medium leading-none">
+                  {/* Avatar */}
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-lg font-medium text-primary">
+                      {otherParticipant.username.slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+
+                  {/* Chat Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium truncate">
                         {otherParticipant.fullname || otherParticipant.username}
                       </p>
                       {chat.lastMessage && (
-                        <>
-                          <p className="text-sm text-muted-foreground truncate mt-2">
-                            {chat.lastMessage.content}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {format(new Date(chat.lastMessage.createdAt), "PP p")}
-                          </p>
-                        </>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(chat.lastMessage.createdAt), "p")}
+                        </span>
                       )}
                     </div>
+                    {chat.lastMessage && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <CheckCheck className="h-3 w-3 text-primary/60 flex-shrink-0" />
+                        <p className="text-sm text-muted-foreground truncate">
+                          {chat.lastMessage.content}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
+                {/* Actions */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
