@@ -211,19 +211,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createChat(participantIds: number[]): Promise<Chat> {
+    // Create new chat
     const [chat] = await db.insert(chats).values({}).returning();
+    console.log("Created chat:", chat);
 
-    // Add participants
-    await Promise.all(
-      participantIds.map((userId) =>
-        db.insert(chatParticipants).values({
-          chatId: chat.id,
-          userId,
-        })
-      )
-    );
+    try {
+      // Add participants
+      await Promise.all(
+        participantIds.map((userId) =>
+          db.insert(chatParticipants).values({
+            chatId: chat.id,
+            userId,
+          })
+        )
+      );
+      console.log("Added participants:", participantIds, "to chat:", chat.id);
 
-    return chat;
+      return chat;
+    } catch (error) {
+      // If adding participants fails, delete the chat
+      await db.delete(chats).where(eq(chats.id, chat.id));
+      console.error("Error adding chat participants:", error);
+      throw new Error("Failed to create chat with participants");
+    }
   }
 
   async getChatMessages(chatId: number): Promise<Message[]> {

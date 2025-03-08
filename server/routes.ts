@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertPostSchema, insertCommentSchema } from "@shared/schema";
+import { insertPostSchema, insertCommentSchema, insertChatSchema, insertMessageSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -371,12 +371,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/chats", requireAuth, async (req, res) => {
     try {
+      console.log("Creating chat with data:", req.body);
       const parsed = insertChatSchema.parse(req.body);
+
+      // Validate that the current user is included in participants
+      if (!parsed.participantIds.includes(req.user!.id)) {
+        parsed.participantIds.push(req.user!.id);
+      }
+
+      // Validate that all participants exist
+      for (const participantId of parsed.participantIds) {
+        const participant = await storage.getUser(participantId);
+        if (!participant) {
+          return res.status(400).json({ error: `User with ID ${participantId} not found` });
+        }
+      }
+
       const chat = await storage.createChat(parsed.participantIds);
       const participants = await storage.getChatParticipants(chat.id);
       res.json({ ...chat, participants });
     } catch (error) {
-      res.status(400).json({ error: "Failed to create chat" });
+      console.error("Error creating chat:", error);
+      res.status(400).json({ error: error.message || "Failed to create chat" });
     }
   });
 
