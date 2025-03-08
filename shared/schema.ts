@@ -31,6 +31,14 @@ export const messages = pgTable("messages", {
   readAt: timestamp("read_at"),
 });
 
+// Add userBlocks table for blocking functionality
+export const userBlocks = pgTable("user_blocks", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  blockedUserId: integer("blocked_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Keep existing tables
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
@@ -112,3 +120,4 @@ export type ChatParticipant = typeof chatParticipants.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type InsertChat = z.infer<typeof insertChatSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type UserBlock = typeof userBlocks.$inferSelect;
