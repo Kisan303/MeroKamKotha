@@ -9,6 +9,29 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
 });
 
+export const chats = pgTable("chats", {
+  id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+});
+
+export const chatParticipants = pgTable("chat_participants", {
+  id: serial("id").primaryKey(),
+  chatId: integer("chat_id").notNull(),
+  userId: integer("user_id").notNull(),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  chatId: integer("chat_id").notNull(),
+  userId: integer("user_id").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  readAt: timestamp("read_at"),
+});
+
+// Keep existing tables
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
@@ -32,12 +55,6 @@ export const comments = pgTable("comments", {
   editedAt: timestamp("edited_at"),
 });
 
-export const likes = pgTable("likes", {
-  id: serial("id").primaryKey(),
-  postId: integer("post_id").notNull(),
-  userId: integer("user_id").notNull(),
-});
-
 export const bookmarks = pgTable("bookmarks", {
   id: serial("id").primaryKey(),
   postId: integer("post_id").notNull(),
@@ -45,9 +62,19 @@ export const bookmarks = pgTable("bookmarks", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users);
+// Schema for creating new chats
+export const insertChatSchema = z.object({
+  participantIds: z.array(z.number()).min(2, "At least two participants required"),
+});
 
-// Updated post schema to handle file uploads
+// Schema for sending messages
+export const insertMessageSchema = z.object({
+  chatId: z.number(),
+  content: z.string().min(1, "Message cannot be empty"),
+});
+
+// Keep existing schemas
+export const insertUserSchema = createInsertSchema(users);
 export const insertPostSchema = z.object({
   type: z.enum(["room", "job"]),
   title: z.string().min(1, "Title is required"),
@@ -72,6 +99,7 @@ export const insertCommentSchema = createInsertSchema(comments).omit({
   editedAt: true
 });
 
+// Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Post = typeof posts.$inferSelect;
@@ -79,3 +107,8 @@ export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type Bookmark = typeof bookmarks.$inferSelect;
+export type Chat = typeof chats.$inferSelect;
+export type ChatParticipant = typeof chatParticipants.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type InsertChat = z.infer<typeof insertChatSchema>;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;

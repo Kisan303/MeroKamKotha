@@ -1,4 +1,4 @@
-import { users, posts, comments, bookmarks } from "@shared/schema";
+import { users, posts, comments, bookmarks, chats, chatParticipants, messages } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";
 import {
@@ -9,6 +9,11 @@ import {
   type InsertUser,
   type InsertPost,
   type InsertComment,
+  type Chat,
+  type Message,
+  type ChatParticipant,
+  type InsertChat,
+  type InsertMessage,
 } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -20,23 +25,26 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-
   createPost(userId: number, post: InsertPost): Promise<Post>;
   getPost(id: number): Promise<Post | undefined>;
   getPosts(): Promise<Post[]>;
   updatePost(id: number, post: Partial<InsertPost>): Promise<Post>;
   deletePost(id: number): Promise<void>;
-
   createComment(userId: number, comment: InsertComment): Promise<Comment>;
   getComment(id: number): Promise<Comment | undefined>;
   getComments(postId: number): Promise<Comment[]>;
   updateComment(id: number, content: string): Promise<Comment>;
   deleteComment(id: number): Promise<void>;
-
   toggleBookmark(userId: number, postId: number): Promise<boolean>;
   getBookmarks(userId: number): Promise<Bookmark[]>;
   isBookmarked(userId: number, postId: number): Promise<boolean>;
-
+  getUserChats(userId: number): Promise<Chat[]>;
+  getChatParticipants(chatId: number): Promise<User[]>;
+  getLastMessage(chatId: number): Promise<{ content: string; createdAt: string } | undefined>;
+  createChat(participantIds: number[]): Promise<Chat>;
+  getChatMessages(chatId: number): Promise<Message[]>;
+  createMessage(userId: number, message: InsertMessage): Promise<Message>;
+  updateChatLastMessage(chatId: number): Promise<void>;
   sessionStore: session.Store;
 }
 
@@ -98,10 +106,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(posts).where(eq(posts.id, id));
   }
 
-  async createComment(
-    userId: number,
-    comment: InsertComment,
-  ): Promise<Comment> {
+  async createComment(userId: number, comment: InsertComment): Promise<Comment> {
     const [newComment] = await db
       .insert(comments)
       .values({ ...comment, userId })
@@ -110,37 +115,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getComment(id: number): Promise<Comment | undefined> {
-    const [comment] = await db
-      .select()
-      .from(comments)
-      .where(eq(comments.id, id));
+    const [comment] = await db.select().from(comments).where(eq(comments.id, id));
     return comment;
   }
 
   async getComments(postId: number): Promise<Comment[]> {
-    console.log(`[Storage] Getting comments for post ${postId}`);
-    try {
-      const result = await db
-        .select()
-        .from(comments)
-        .where(eq(comments.postId, postId))
-        .orderBy(sql`${comments.createdAt} ASC`);
-
-      console.log(`[Storage] Successfully retrieved ${result.length} comments:`, result);
-      return result;
-    } catch (error) {
-      console.error(`[Storage] Error getting comments for post ${postId}:`, error);
-      throw error;
-    }
+    return await db
+      .select()
+      .from(comments)
+      .where(eq(comments.postId, postId))
+      .orderBy(sql`${comments.createdAt} ASC`);
   }
 
   async updateComment(id: number, content: string): Promise<Comment> {
     const [comment] = await db
       .update(comments)
-      .set({ 
-        content,
-        editedAt: new Date() 
-      })
+      .set({ content, editedAt: new Date() })
       .where(eq(comments.id, id))
       .returning();
     return comment;
@@ -167,7 +157,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBookmarks(userId: number): Promise<Bookmark[]> {
-    return await db.select().from(bookmarks).where(eq(bookmarks.userId, userId));
+    return await db
+      .select()
+      .from(bookmarks)
+      .where(eq(bookmarks.userId, userId));
   }
 
   async isBookmarked(userId: number, postId: number): Promise<boolean> {
@@ -177,6 +170,87 @@ export class DatabaseStorage implements IStorage {
       .where(eq(bookmarks.userId, userId))
       .where(eq(bookmarks.postId, postId));
     return !!bookmark;
+  }
+
+  async getUserChats(userId: number): Promise<Chat[]> {
+    const results = await db
+      .select()
+      .from(chats)
+      .innerJoin(chatParticipants, eq(chats.id, chatParticipants.chatId))
+      .where(eq(chatParticipants.userId, userId))
+      .orderBy(sql`${chats.lastMessageAt} DESC`);
+
+    return results.map(({ chats }) => chats);
+  }
+
+  async getChatParticipants(chatId: number): Promise<User[]> {
+    const results = await db
+      .select({
+        user: users,
+      })
+      .from(chatParticipants)
+      .innerJoin(users, eq(chatParticipants.userId, users.id))
+      .where(eq(chatParticipants.chatId, chatId));
+
+    return results.map(({ user }) => user);
+  }
+
+  async getLastMessage(chatId: number): Promise<{ content: string; createdAt: string } | undefined> {
+    const [lastMessage] = await db
+      .select({
+        content: messages.content,
+        createdAt: messages.createdAt,
+      })
+      .from(messages)
+      .where(eq(messages.chatId, chatId))
+      .orderBy(sql`${messages.createdAt} DESC`)
+      .limit(1);
+
+    return lastMessage;
+  }
+
+  async createChat(participantIds: number[]): Promise<Chat> {
+    const [chat] = await db.insert(chats).values({}).returning();
+
+    // Add participants
+    await Promise.all(
+      participantIds.map((userId) =>
+        db.insert(chatParticipants).values({
+          chatId: chat.id,
+          userId,
+        })
+      )
+    );
+
+    return chat;
+  }
+
+  async getChatMessages(chatId: number): Promise<Message[]> {
+    return db
+      .select()
+      .from(messages)
+      .where(eq(messages.chatId, chatId))
+      .orderBy(sql`${messages.createdAt} ASC`);
+  }
+
+  async createMessage(userId: number, message: InsertMessage): Promise<Message> {
+    const [newMessage] = await db
+      .insert(messages)
+      .values({
+        userId,
+        chatId: message.chatId,
+        content: message.content,
+      })
+      .returning();
+
+    return newMessage;
+  }
+
+  async updateChatLastMessage(chatId: number): Promise<void> {
+    await db
+      .update(chats)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(chats.id, chatId));
   }
 }
 

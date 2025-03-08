@@ -55,23 +55,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Setup Socket.IO connection handling
-  io.on("connection", (socket) => {
-    console.log("Client connected");
-
-    socket.on("join-post", (postId: string) => {
-      socket.join(`post-${postId}`);
-    });
-
-    socket.on("leave-post", (postId: string) => {
-      socket.leave(`post-${postId}`);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Client disconnected");
-    });
-  });
-
   // Serve uploaded files statically
   app.use('/uploads', express.static(uploadDir));
 
@@ -330,6 +313,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.status(500).json({ error: "Failed to get bookmarked posts" });
     }
+  });
+
+
+  // Add these routes after the existing routes
+  // Chat endpoints
+  app.get("/api/chats", requireAuth, async (req, res) => {
+    try {
+      const chats = await storage.getUserChats(req.user!.id);
+      const chatsWithDetails = await Promise.all(
+        chats.map(async (chat) => {
+          const participants = await storage.getChatParticipants(chat.id);
+          const lastMessage = await storage.getLastMessage(chat.id);
+          return {
+            ...chat,
+            participants,
+            lastMessage,
+          };
+        })
+      );
+      res.json(chatsWithDetails);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get chats" });
+    }
+  });
+
+  app.post("/api/chats", requireAuth, async (req, res) => {
+    try {
+      const parsed = insertChatSchema.parse(req.body);
+      const chat = await storage.createChat(parsed.participantIds);
+      const participants = await storage.getChatParticipants(chat.id);
+      res.json({ ...chat, participants });
+    } catch (error) {
+      res.status(400).json({ error: "Failed to create chat" });
+    }
+  });
+
+  app.get("/api/chats/:id/messages", requireAuth, async (req, res) => {
+    try {
+      const chatId = Number(req.params.id);
+      const messages = await storage.getChatMessages(chatId);
+      const messagesWithUsers = await Promise.all(
+        messages.map(async (message) => {
+          const user = await storage.getUser(message.userId);
+          return { ...message, user };
+        })
+      );
+      res.json(messagesWithUsers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get messages" });
+    }
+  });
+
+  app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
+    try {
+      const chatId = Number(req.params.id);
+      const parsed = insertMessageSchema.parse({ ...req.body, chatId });
+      const message = await storage.createMessage(req.user!.id, parsed);
+      const user = await storage.getUser(message.userId);
+
+      // Update last message timestamp
+      await storage.updateChatLastMessage(chatId);
+
+      const messageWithUser = { ...message, user };
+
+      // Emit new message to all clients in this chat room
+      io.to(`chat-${chatId}`).emit("new-message", messageWithUser);
+
+      res.json(messageWithUser);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Update Socket.IO connection handling to include chat rooms
+  io.on("connection", (socket) => {
+    console.log("Client connected");
+
+    socket.on("join-chat", (chatId: string) => {
+      socket.join(`chat-${chatId}`);
+    });
+
+    socket.on("leave-chat", (chatId: string) => {
+      socket.leave(`chat-${chatId}`);
+    });
+
+    socket.on("join-post", (postId: string) => {
+      socket.join(`post-${postId}`);
+    });
+
+    socket.on("leave-post", (postId: string) => {
+      socket.leave(`post-${postId}`);
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Client disconnected");
+    });
   });
 
   return httpServer;
