@@ -39,10 +39,10 @@ export function PostForm({ initialData, onSuccess }: {
   const [previews, setPreviews] = useState<string[]>(initialData?.images || []);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  console.log("PostForm rendered with initialData:", initialData);
-
   const form = useForm<InsertPost>({
-    resolver: zodResolver(insertPostSchema),
+    resolver: zodResolver(insertPostSchema.extend({
+      images: initialData?.type === "room" ? insertPostSchema.shape.images : undefined
+    })),
     defaultValues: initialData || {
       type: "room",
       title: "",
@@ -65,7 +65,7 @@ export function PostForm({ initialData, onSuccess }: {
   }, [postType]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("Image input change event triggered");
+    console.log("Image input change triggered");
     const files = e.target.files;
     if (!files) return;
 
@@ -114,32 +114,34 @@ export function PostForm({ initialData, onSuccess }: {
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
       console.log("Starting mutation with data:", data);
-      try {
-        if (data.type === "room" && previews.length === 0) {
-          throw new Error("At least one image is required for room posts");
-        }
 
-        const postData = {
-          ...data,
-          images: data.type === "room" ? previews : [],
-        };
-
-        console.log("Sending post data to server:", postData);
-        const res = await apiRequest("POST", "/api/posts", postData);
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error("Server error response:", errorText);
-          throw new Error(errorText || "Failed to create post");
-        }
-
-        const result = await res.json();
-        console.log("Post created successfully:", result);
-        return result;
-      } catch (error) {
-        console.error("Mutation error:", error);
-        throw error;
+      // For room posts, validate images
+      if (data.type === "room" && previews.length === 0) {
+        throw new Error("At least one image is required for room posts");
       }
+
+      // Validate price for room posts
+      if (data.type === "room" && (data.price === null || data.price <= 0)) {
+        throw new Error("Please enter a valid price for room posts");
+      }
+
+      const postData = {
+        ...data,
+        images: data.type === "room" ? previews : [],
+      };
+
+      console.log("Sending post data to server:", postData);
+      const res = await apiRequest("POST", "/api/posts", postData);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Server error response:", errorText);
+        throw new Error(errorText || "Failed to create post");
+      }
+
+      const result = await res.json();
+      console.log("Post created successfully:", result);
+      return result;
     },
     onSuccess: () => {
       console.log("Mutation succeeded, cleaning up form");
@@ -171,25 +173,56 @@ export function PostForm({ initialData, onSuccess }: {
     console.log("Form validation state:", form.formState);
 
     try {
-      if (data.type === "room" && previews.length === 0) {
-        console.log("Validation failed: No images for room post");
-        toast({
-          title: "Error",
-          description: "At least one image is required for room posts",
-          variant: "destructive",
-        });
-        return;
+      // Validate required fields for room posts
+      if (data.type === "room") {
+        if (!data.title.trim()) {
+          toast({
+            title: "Error",
+            description: "Title is required",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (!data.description.trim()) {
+          toast({
+            title: "Error",
+            description: "Description is required",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (!data.location.trim()) {
+          toast({
+            title: "Error",
+            description: "Location is required",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (!data.price || data.price <= 0) {
+          toast({
+            title: "Error",
+            description: "Please enter a valid price",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (previews.length === 0) {
+          toast({
+            title: "Error",
+            description: "At least one image is required for room posts",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
-      console.log("Calling mutation with data...");
+      console.log("Calling mutation with validated data...");
       await createMutation.mutateAsync(data);
     } catch (error) {
       console.error("Submit error:", error);
     }
   };
-
-  console.log("Current form state:", form.formState);
-  console.log("Form errors:", form.formState.errors);
 
   return (
     <ScrollArea className="h-[80vh] w-full">
@@ -201,6 +234,7 @@ export function PostForm({ initialData, onSuccess }: {
         <Form {...form}>
           <form
             onSubmit={(e) => {
+              e.preventDefault();
               console.log("Raw form submit event triggered");
               form.handleSubmit(onSubmit)(e);
             }}
@@ -276,12 +310,8 @@ export function PostForm({ initialData, onSuccess }: {
                 </FormItem>
               )}
             />
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="grid grid-cols-2 gap-4"
-            >
+
+            <div className="grid grid-cols-2 gap-4">
               <Card className="bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent border-muted-foreground/10 p-4">
                 <FormField
                   control={form.control}
@@ -342,15 +372,10 @@ export function PostForm({ initialData, onSuccess }: {
                   )}
                 />
               </Card>
-            </motion.div>
+            </div>
 
             {postType === "room" && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent border border-muted-foreground/10 rounded-lg p-6"
-              >
+              <div className="bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent border border-muted-foreground/10 rounded-lg p-6">
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <ImagePlus className="h-5 w-5 text-green-500" />
@@ -367,31 +392,14 @@ export function PostForm({ initialData, onSuccess }: {
                           onChange={handleImageChange}
                           className="cursor-pointer bg-background/50 backdrop-blur-sm border-muted-foreground/20"
                         />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="group"
-                        >
-                          <ImagePlus className="h-4 w-4 transition-transform group-hover:scale-110" />
-                        </Button>
                       </div>
 
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                      >
+                      {previews.length > 0 && (
                         <Card className="p-4 bg-card/50 backdrop-blur-sm">
                           <div className="grid grid-cols-2 gap-4">
                             {previews.map((preview, index) => (
-                              <motion.div
+                              <div
                                 key={index}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                transition={{ delay: index * 0.1 }}
                                 className="relative group rounded-lg overflow-hidden"
                               >
                                 <img
@@ -399,23 +407,22 @@ export function PostForm({ initialData, onSuccess }: {
                                   alt={`Preview ${index + 1}`}
                                   className="rounded-md w-full h-48 object-cover transition-all duration-300 group-hover:brightness-110"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <Button
                                   type="button"
                                   variant="destructive"
                                   size="icon"
-                                  className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-1 group-hover:translate-y-0"
+                                  className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-all duration-200"
                                   onClick={() => {
                                     setPreviews(previews.filter((_, i) => i !== index));
                                   }}
                                 >
                                   <X className="h-4 w-4" />
                                 </Button>
-                              </motion.div>
+                              </div>
                             ))}
                           </div>
                         </Card>
-                      </motion.div>
+                      )}
                     </div>
                   </FormControl>
                   <FormDescription>
@@ -425,15 +432,10 @@ export function PostForm({ initialData, onSuccess }: {
                     <FormMessage>At least one image is required for room posts</FormMessage>
                   )}
                 </FormItem>
-              </motion.div>
+              </div>
             )}
 
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex gap-4 justify-end"
-            >
+            <div className="flex gap-4 justify-end">
               <DialogClose ref={closeButtonRef} asChild>
                 <Button type="button" variant="outline">
                   Cancel
@@ -442,7 +444,6 @@ export function PostForm({ initialData, onSuccess }: {
               <Button
                 type="submit"
                 disabled={createMutation.isPending}
-                onClick={() => console.log("Submit button clicked")}
                 className="bg-primary"
               >
                 {createMutation.isPending ? (
@@ -454,10 +455,11 @@ export function PostForm({ initialData, onSuccess }: {
                   "Create Post"
                 )}
               </Button>
-            </motion.div>
+            </div>
           </form>
         </Form>
       </div>
+      <ScrollBar />
     </ScrollArea>
   );
 }
