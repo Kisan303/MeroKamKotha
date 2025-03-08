@@ -8,8 +8,8 @@ export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
 
   return (
-    <div className="flex h-screen">
-      <div className="w-80 flex-shrink-0">
+    <div className="flex h-screen bg-background">
+      <div className="w-80 flex-shrink-0 border-r">
         <ChatList onSelectChat={setSelectedChat} />
       </div>
       {selectedChat ? (
@@ -19,7 +19,10 @@ export default function ChatPage() {
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
-          Select a chat to start messaging
+          <div className="text-center">
+            <p className="text-lg">Select a chat to start messaging</p>
+            <p className="text-sm">Or click on a user's profile to start a new conversation</p>
+          </div>
         </div>
       )}
     </div>
