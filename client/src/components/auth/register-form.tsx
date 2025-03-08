@@ -84,7 +84,7 @@ export function RegisterForm() {
         throw new Error(errorData.error || "Invalid verification code");
       }
 
-      // Then register the user
+      // Then complete the registration
       const registerRes = await fetch("/api/auth/register-verified", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,19 +99,16 @@ export function RegisterForm() {
       const user = await registerRes.json();
       console.log("Registration successful:", user);
 
+      // Show success message
       toast({
         title: "Registration successful",
         description: "You have been successfully registered",
       });
 
-      // Login automatically after registration
-      await registerMutation.mutateAsync({
-        username: formData.username,
-        password: formData.password,
-        fullname: formData.fullname,
-        phoneNumber: formData.phoneNumber,
-      });
+      // Login automatically
+      await registerMutation.mutateAsync(formData);
 
+      // Navigate to profile
       navigate("/profile");
     } catch (error: any) {
       console.error("Registration error:", error);
@@ -122,15 +119,13 @@ export function RegisterForm() {
       });
 
       // If verification code is invalid, let user try again
-      if (error.message.includes("Invalid or expired verification code")) {
+      if (error.message.includes("Invalid verification code")) {
         return;
       }
 
-      // If username exists error, go back to registration form
-      if (error.message.includes("Username already exists")) {
-        setIsVerifying(false);
-        setFormData(null);
-      }
+      // For other errors, go back to registration form
+      setIsVerifying(false);
+      setFormData(null);
     } finally {
       setIsLoading(false);
     }

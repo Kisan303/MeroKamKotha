@@ -658,18 +658,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { phoneNumber, username, password, fullname } = req.body;
 
+      // Check if the phone number is verified
+      const [verifiedUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.phoneNumber, phoneNumber))
+        .where(eq(users.isPhoneVerified, true));
+
+      if (!verifiedUser) {
+        return res.status(400).json({ error: "Phone number not verified" });
+      }
+
       // Check if username already exists (excluding temporary records)
       const [existingUser] = await db
         .select()
         .from(users)
         .where(eq(users.username, username))
-        .where(sql`${users.username} != ''`); // Exclude temporary records
+        .where(sql`${users.username} != ''`)
+        .where(sql`${users.phoneNumber} != ${phoneNumber}`);
 
       if (existingUser) {
         return res.status(400).json({ error: "Username already exists" });
       }
 
-      // Update the existing user record with the registration data
+      // Update the verified user record with registration data
       const [updatedUser] = await db
         .update(users)
         .set({
@@ -678,12 +690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fullname,
         })
         .where(eq(users.phoneNumber, phoneNumber))
-        .where(eq(users.isPhoneVerified, true))
         .returning();
-
-      if (!updatedUser) {
-        return res.status(400).json({ error: "Phone number not verified" });
-      }
 
       res.json(updatedUser);
     } catch (error: any) {
