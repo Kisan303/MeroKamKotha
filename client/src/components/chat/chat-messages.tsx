@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { socket } from "@/lib/socket";
 import { Loader2 } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
 
 type MessageWithUser = Message & {
   user: User;
@@ -22,8 +23,26 @@ export function ChatMessages({ chatId }: { chatId: number }) {
 
   useEffect(() => {
     socket.emit("join-chat", chatId.toString());
+    console.log(`Joined chat room: ${chatId}`);
+
+    socket.on("new-message", (newMessage: MessageWithUser) => {
+      if (newMessage.chatId === chatId) {
+        console.log('Received new message:', newMessage);
+        queryClient.setQueryData<MessageWithUser[]>(
+          ["/api/chats", chatId, "messages"],
+          (old = []) => {
+            const exists = old.some(m => m.id === newMessage.id);
+            if (exists) return old;
+            return [...old, newMessage];
+          }
+        );
+      }
+    });
+
     return () => {
+      console.log(`Leaving chat room: ${chatId}`);
       socket.emit("leave-chat", chatId.toString());
+      socket.off("new-message");
     };
   }, [chatId]);
 
@@ -57,7 +76,7 @@ export function ChatMessages({ chatId }: { chatId: number }) {
                 }`}
               >
                 <p className="text-sm font-medium mb-1">
-                  {message.user?.username || "Unknown User"}
+                  {message.user.username}
                 </p>
                 <p className="text-sm break-words">{message.content}</p>
                 <p className="text-xs opacity-70 mt-1">

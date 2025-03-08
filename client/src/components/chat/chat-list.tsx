@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type Chat, type User } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";

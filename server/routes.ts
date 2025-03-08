@@ -389,7 +389,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const chat = await storage.createChat(parsed.participantIds);
       const participants = await storage.getChatParticipants(chat.id);
-      res.json({ ...chat, participants });
+
+      console.log("Created chat:", chat);
+      console.log("Participants:", participants);
+
+      // Format response with user details
+      const response = {
+        ...chat,
+        participants,
+        lastMessage: null
+      };
+
+      res.json(response);
     } catch (error) {
       console.error("Error creating chat:", error);
       res.status(400).json({ error: error.message || "Failed to create chat" });
@@ -429,7 +440,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(messageWithUser);
     } catch (error) {
-      res.status(400).json({ error: "Failed to send message" });
+      console.error("Error sending message:", error);
+      res.status(400).json({ error: error.message || "Failed to send message" });
     }
   });
 
