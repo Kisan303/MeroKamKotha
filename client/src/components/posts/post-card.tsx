@@ -4,8 +4,28 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
+import { 
+  Bookmark, 
+  MessageSquare, 
+  Clock, 
+  UserCircle, 
+  MoreVertical, 
+  Edit, 
+  Trash,
+  ChevronDown,
+  ChevronUp
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import type { Post, Comment } from "@shared/schema";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { socket } from "@/lib/socket";
+import { CommentThread } from './comment-thread';
+import { Input } from "@/components/ui/input";
+import { PostForm } from "./post-form";
+import { AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
@@ -21,17 +41,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
-import { Bookmark, MessageSquare, Clock, UserCircle, MoreVertical, Edit, Trash } from "lucide-react";
-import type { Post, Comment } from "@shared/schema";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
-import { socket } from "@/lib/socket";
-import { CommentThread } from './comment-thread';
-import { Input } from "@/components/ui/input";
-import { PostForm } from "./post-form";
-import { motion, AnimatePresence } from 'framer-motion';
+
 
 type BookmarkResponse = { bookmarked: boolean };
 type PostWithUsername = Post & { username?: string };
@@ -51,14 +61,24 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
   const [showUnsaveConfirm, setShowUnsaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
-  // Fetch bookmark status for this specific post
+  // Function to check if description is long
+  const isLongDescription = post.description.length > 150;
+
+  // Function to get truncated description
+  const getTruncatedDescription = () => {
+    if (!isLongDescription || isDescriptionExpanded) {
+      return post.description;
+    }
+    return post.description.slice(0, 150) + "...";
+  };
+
   const { data: bookmarkData } = useQuery<BookmarkResponse>({
     queryKey: ["/api/posts", post.id, "bookmark"],
     enabled: !!user,
   });
 
-  // Always fetch comments, just control their display with showComments
   const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentWithUsername[]>({
     queryKey: ["/api/posts", post.id, "comments"],
     queryFn: async () => {
@@ -74,7 +94,6 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
     staleTime: 1000 * 60,
   });
 
-  // Update isBookmarked when bookmarkData changes for this specific post
   useEffect(() => {
     if (bookmarkData) {
       setIsBookmarked(bookmarkData.bookmarked);
@@ -82,11 +101,9 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
   }, [bookmarkData]);
 
   useEffect(() => {
-    // Join room for this specific post
     socket.emit("join-post", post.id.toString());
     console.log(`Joined post room: ${post.id}`);
 
-    // Only listen for comment updates
     socket.on("new-comment", (newComment: CommentWithUsername) => {
       if (newComment.postId === post.id) {
         console.log('Received new comment:', newComment);
@@ -122,30 +139,19 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
       }
     },
     onMutate: async () => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/posts", post.id, "bookmark"] });
-
-      // Snapshot the previous value
       const previousData = queryClient.getQueryData<BookmarkResponse>(["/api/posts", post.id, "bookmark"]);
-
-      // Optimistically update to the new value
       const newBookmarked = !isBookmarked;
       setIsBookmarked(newBookmarked);
       queryClient.setQueryData(["/api/posts", post.id, "bookmark"], { bookmarked: newBookmarked });
-
-      // Return a context object with the previous data
       return { previousData };
     },
     onSuccess: (data) => {
-      // Update the bookmark state with the server response
       setIsBookmarked(data.bookmarked);
       queryClient.setQueryData(["/api/posts", post.id, "bookmark"], { bookmarked: data.bookmarked });
-
-      // Invalidate the bookmarks list query to refresh the profile page
       queryClient.invalidateQueries({ queryKey: ["/api/user/bookmarks"] });
     },
     onError: (err, _, context) => {
-      // Revert optimistic update on error
       if (context?.previousData) {
         setIsBookmarked(context.previousData.bookmarked);
         queryClient.setQueryData(["/api/posts", post.id, "bookmark"], context.previousData);
@@ -202,7 +208,6 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
     },
   });
 
-  // Organize comments into a tree structure
   const topLevelComments = comments.filter(comment => !comment.parentId);
 
   const handleBookmarkClick = () => {
@@ -281,48 +286,73 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
           </div>
         </CardHeader>
 
-        <CardContent className="pb-3">
-          <motion.p
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-base leading-relaxed mb-4"
-          >
-            {post.description}
-          </motion.p>
+        <CardContent className="pb-3 space-y-4">
+          <div className="space-y-2">
+            <motion.p
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className={`text-base leading-relaxed ${!isDescriptionExpanded && isLongDescription ? 'line-clamp-3' : ''}`}
+            >
+              {getTruncatedDescription()}
+            </motion.p>
+
+            {isLongDescription && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+              >
+                {isDescriptionExpanded ? (
+                  <>
+                    Show Less <ChevronUp className="h-4 w-4 ml-1" />
+                  </>
+                ) : (
+                  <>
+                    Show More <ChevronDown className="h-4 w-4 ml-1" />
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+
           {post.type === "room" && post.images && post.images.length > 0 && (
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="relative"
+              className="relative -mx-6 px-6"
             >
-              <ScrollArea className="w-full pb-2">
-                <div className="flex gap-4">
+              <ScrollArea className="w-full">
+                <div className="flex gap-4 pb-4">
                   {post.images.map((image, i) => (
                     <motion.div
                       key={i}
                       whileHover={{ scale: 1.02 }}
-                      className="relative flex-none first:pl-0 last:pr-0"
+                      className="relative flex-none first:pl-0 last:pr-6"
                     >
-                      <img
-                        src={image}
-                        alt={`Room ${i + 1}`}
-                        className="rounded-lg object-cover w-72 h-48 transition-all duration-300 hover:brightness-110"
-                      />
-                      <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-black/10" />
+                      <div className="relative w-72 h-48 overflow-hidden rounded-lg">
+                        <img
+                          src={image}
+                          alt={`Room ${i + 1}`}
+                          className="absolute inset-0 w-full h-full object-cover transition-all duration-300 hover:brightness-110"
+                        />
+                        <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-lg" />
+                      </div>
                     </motion.div>
                   ))}
                 </div>
-                <ScrollBar orientation="horizontal" />
+                <ScrollBar orientation="horizontal" className="invisible" />
               </ScrollArea>
             </motion.div>
           )}
+
           <motion.div
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="flex gap-4 text-sm text-muted-foreground mt-4"
+            className="flex gap-4 text-sm text-muted-foreground"
           >
             <span className="flex items-center gap-1">
               📍 {post.location}
@@ -448,14 +478,12 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
           </motion.div>
         </CardFooter>
 
-        {/* Add Edit Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
           <DialogContent>
             <PostForm initialData={post} onSuccess={() => setShowEditDialog(false)} />
           </DialogContent>
         </Dialog>
 
-        {/* Add Delete Confirmation */}
         <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -478,8 +506,6 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        {/* Keep existing unsave confirmation dialog... */}
       </Card>
     </motion.div>
   );
