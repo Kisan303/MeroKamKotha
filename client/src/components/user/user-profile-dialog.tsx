@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, MessageSquare, Clock } from "lucide-react";
+import { Loader2, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Post, User, Chat } from "@shared/schema";
@@ -142,7 +142,10 @@ export function UserProfileDialog({ username, open, onOpenChange }: UserProfileD
               {currentUser?.id !== profileUser.id && (
                 <div 
                   className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer" 
-                  onClick={handleStartChat}
+                  onClick={() => {
+                    onOpenChange(false);
+                    navigate('/chat');
+                  }}
                 >
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-5 w-5 text-primary" />
