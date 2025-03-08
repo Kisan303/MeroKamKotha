@@ -1,11 +1,10 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InsertUser, insertUserSchema, verifyOtpSchema } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
@@ -15,6 +14,7 @@ import { useLocation } from "wouter";
 
 export function RegisterForm() {
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<InsertUser | null>(null);
   const { toast } = useToast();
   const { registerMutation } = useAuth();
@@ -30,12 +30,9 @@ export function RegisterForm() {
     },
   });
 
-  const onLoginSuccess = () => {
-    //This function is not used.
-  };
-
   const requestOtp = async (data: InsertUser) => {
     try {
+      setIsLoading(true);
       console.log("Requesting OTP for:", data.phoneNumber);
       const res = await fetch("/api/auth/request-otp", {
         method: "POST",
@@ -60,11 +57,14 @@ export function RegisterForm() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const verifyOtpAndRegister = async (code: string) => {
     try {
+      setIsLoading(true);
       if (!formData) {
         throw new Error("Registration data not found");
       }
@@ -89,16 +89,15 @@ export function RegisterForm() {
       console.log("OTP verified, proceeding with registration");
 
       // If OTP is valid, register the user with the stored form data
-      const user = await registerMutation.mutateAsync(formData);
-      console.log("Registration successful:", user);
+      await registerMutation.mutateAsync(formData);
+      console.log("Registration successful");
 
-      // Show success message
+      // Show success message and redirect
       toast({
         title: "Registration successful",
         description: "You have been successfully registered",
       });
 
-      // Redirect to profile page on success
       navigate("/profile");
     } catch (error: any) {
       console.error("Registration error:", error);
@@ -107,6 +106,8 @@ export function RegisterForm() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -196,7 +197,7 @@ export function RegisterForm() {
           )}
         />
 
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="w-full" disabled={isLoading}>
           Continue with Phone Verification
         </Button>
       </form>

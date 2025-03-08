@@ -644,10 +644,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(users.id, user.id));
 
-      res.sendStatus(200);
+      res.json({ success: true });
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
-      res.status(500).json({ error: "Failed to verify code" });
+      res.status(500).json({ error: error.message || "Failed to verify code" });
     }
   });
 
