@@ -446,6 +446,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete chat
+  app.delete("/api/chats/:id", requireAuth, async (req, res) => {
+    try {
+      const chatId = Number(req.params.id);
+      const chat = await storage.getChatMessages(chatId);
+
+      if (!chat) {
+        return res.status(404).json({ error: "Chat not found" });
+      }
+
+      // Check if user is a participant
+      const participants = await storage.getChatParticipants(chatId);
+      if (!participants.some(p => p.id === req.user!.id)) {
+        return res.status(403).json({ error: "Not authorized to delete this chat" });
+      }
+
+      await storage.deleteChat(chatId);
+
+      // Emit chat deletion to all participants
+      participants.forEach(participant => {
+        io.to(`user-${participant.id}`).emit("chat-deleted", chatId);
+      });
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+      res.status(500).json({ error: "Failed to delete chat" });
+    }
+  });
+
+  // Block user
+  app.post("/api/users/:id/block", requireAuth, async (req, res) => {
+    try {
+      const blockedUserId = Number(req.params.id);
+      const userId = req.user!.id;
+
+      if (blockedUserId === userId) {
+        return res.status(400).json({ error: "Cannot block yourself" });
+      }
+
+      const blockedUser = await storage.getUser(blockedUserId);
+      if (!blockedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      await storage.blockUser(userId, blockedUserId);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      res.status(500).json({ error: "Failed to block user" });
+    }
+  });
+
+  // Unblock user
+  app.delete("/api/users/:id/block", requireAuth, async (req, res) => {
+    try {
+      const blockedUserId = Number(req.params.id);
+      await storage.unblockUser(req.user!.id, blockedUserId);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error unblocking user:", error);
+      res.status(500).json({ error: "Failed to unblock user" });
+    }
+  });
+
+  // Get blocked users
+  app.get("/api/users/blocked", requireAuth, async (req, res) => {
+    try {
+      const blockedUsers = await storage.getBlockedUsers(req.user!.id);
+      res.json(blockedUsers);
+    } catch (error) {
+      console.error("Error getting blocked users:", error);
+      res.status(500).json({ error: "Failed to get blocked users" });
+    }
+  });
+
   // Update Socket.IO connection handling to include chat rooms
   io.on("connection", (socket) => {
     console.log("Client connected");

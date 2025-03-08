@@ -1,4 +1,4 @@
-import { users, posts, comments, bookmarks, chats, chatParticipants, messages } from "@shared/schema";
+import { users, posts, comments, bookmarks, chats, chatParticipants, messages, userBlocks } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";
 import {
@@ -47,6 +47,11 @@ export interface IStorage {
   updateChatLastMessage(chatId: number): Promise<void>;
   sessionStore: session.Store;
   getUserPosts(userId: number): Promise<Post[]>;
+  deleteChat(chatId: number): Promise<void>;
+  blockUser(userId: number, blockedUserId: number): Promise<void>;
+  unblockUser(userId: number, blockedUserId: number): Promise<void>;
+  isUserBlocked(userId: number, blockedUserId: number): Promise<boolean>;
+  getBlockedUsers(userId: number): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -269,6 +274,50 @@ export class DatabaseStorage implements IStorage {
       .from(posts)
       .where(eq(posts.userId, userId))
       .orderBy(sql`${posts.createdAt} DESC`);
+  }
+  async deleteChat(chatId: number): Promise<void> {
+    // First delete all messages in the chat
+    await db.delete(messages).where(eq(messages.chatId, chatId));
+    // Then delete chat participants
+    await db.delete(chatParticipants).where(eq(chatParticipants.chatId, chatId));
+    // Finally delete the chat itself
+    await db.delete(chats).where(eq(chats.id, chatId));
+  }
+
+  async blockUser(userId: number, blockedUserId: number): Promise<void> {
+    // Add user block record
+    await db.insert(userBlocks).values({
+      userId,
+      blockedUserId,
+      createdAt: new Date(),
+    });
+  }
+
+  async unblockUser(userId: number, blockedUserId: number): Promise<void> {
+    await db.delete(userBlocks)
+      .where(eq(userBlocks.userId, userId))
+      .where(eq(userBlocks.blockedUserId, blockedUserId));
+  }
+
+  async isUserBlocked(userId: number, blockedUserId: number): Promise<boolean> {
+    const [block] = await db
+      .select()
+      .from(userBlocks)
+      .where(eq(userBlocks.userId, userId))
+      .where(eq(userBlocks.blockedUserId, blockedUserId));
+    return !!block;
+  }
+
+  async getBlockedUsers(userId: number): Promise<User[]> {
+    const blocks = await db
+      .select({
+        blockedUser: users,
+      })
+      .from(userBlocks)
+      .innerJoin(users, eq(userBlocks.blockedUserId, users.id))
+      .where(eq(userBlocks.userId, userId));
+
+    return blocks.map(({ blockedUser }) => blockedUser);
   }
 }
 
