@@ -11,7 +11,6 @@ import type { Post, Chat } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
-import { format } from "date-fns";
 
 type PostWithUsername = Post & { username?: string };
 
@@ -31,7 +30,7 @@ const item = {
 };
 
 export default function ProfilePage() {
-  const { user, logoutMutation } = useAuth();
+  const { user } = useAuth();
   const [, navigate] = useLocation();
 
   const { data: posts = [] } = useQuery<PostWithUsername[]>({
@@ -131,19 +130,30 @@ export default function ProfilePage() {
               </Card>
             </motion.div>
 
+            {/* Chat Stats Card with Direct Link */}
             <motion.div variants={item} className="col-span-1">
-              <Card className="h-full bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent hover:shadow-md transition-shadow group">
+              <Card 
+                className="h-full bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent hover:shadow-md transition-shadow cursor-pointer group"
+                onClick={() => navigate('/chat')}
+              >
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageSquare className="h-5 w-5 text-green-500 group-hover:scale-110 transition-transform" />
-                    Active Chats
+                    Chat History
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-4xl font-bold bg-gradient-to-r from-green-500 to-green-600 bg-clip-text text-transparent">
                     {chats.length}
                   </p>
-                  <p className="text-muted-foreground">Ongoing conversations</p>
+                  <p className="text-muted-foreground">Active conversations</p>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full mt-2 group-hover:bg-green-500/10"
+                  >
+                    View History
+                    <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
                 </CardContent>
               </Card>
             </motion.div>
@@ -162,10 +172,6 @@ export default function ProfilePage() {
                 <TabsTrigger value="bookmarks" className="flex items-center gap-2 data-[state=active]:bg-primary/20">
                   <Bookmark className="h-4 w-4" />
                   Saved Posts ({bookmarkedPosts.length})
-                </TabsTrigger>
-                <TabsTrigger value="chats" className="flex items-center gap-2 data-[state=active]:bg-primary/20">
-                  <MessageSquare className="h-4 w-4" />
-                  Chat History ({chats.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -254,75 +260,6 @@ export default function ProfilePage() {
                         <Card className="p-8 text-center bg-gradient-to-br from-muted/50 to-muted/30">
                           <p className="text-muted-foreground">You haven't saved any posts yet.</p>
                           <p className="text-muted-foreground">Click the 'Save' button on posts to add them to your bookmarks!</p>
-                        </Card>
-                      </motion.div>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </TabsContent>
-
-              {/* Chat History Tab */}
-              <TabsContent value="chats" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    Chat History
-                  </h2>
-                  <Button
-                    onClick={() => navigate('/chat')}
-                    className="gap-2"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    Open Messages
-                  </Button>
-                </div>
-
-                <AnimatePresence>
-                  <motion.div 
-                    layout
-                    className="grid grid-cols-1 gap-4"
-                  >
-                    {chats.map((chat, index) => (
-                      <motion.div
-                        key={chat.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ delay: index * 0.1 }}
-                      >
-                        <Card 
-                          className="hover:bg-accent/50 transition-colors cursor-pointer"
-                          onClick={() => {
-                            navigate('/chat/' + chat.id);
-                          }}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h3 className="font-medium">
-                                  Chat with {chat.participants?.filter(p => p.id !== user.id).map(p => p.username).join(", ")}
-                                </h3>
-                                {chat.lastMessage && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    Last message: {format(new Date(chat.lastMessage.createdAt), "PP p")}
-                                  </p>
-                                )}
-                              </div>
-                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    ))}
-                    {chats.length === 0 && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                      >
-                        <Card className="p-8 text-center bg-gradient-to-br from-muted/50 to-muted/30">
-                          <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                          <p className="text-muted-foreground">No active conversations</p>
-                          <p className="text-muted-foreground text-sm">Start chatting with other users to see your chat history here!</p>
                         </Card>
                       </motion.div>
                     )}
