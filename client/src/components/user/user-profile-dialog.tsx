@@ -125,25 +125,31 @@ export function UserProfileDialog({ username, open, onOpenChange }: UserProfileD
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Chat Messages Container - Only show for other users */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Saved Posts Container */}
+              <div className="p-4 rounded-lg border bg-card">
+                <div className="flex items-center gap-2">
+                  <div className="text-xl font-medium">Saved Posts</div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  View your bookmarked posts
+                </p>
+              </div>
+
+              {/* Chat History Container */}
               {currentUser?.id !== profileUser.id && (
-                <div className="col-span-2 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer" onClick={handleStartChat}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5 text-primary" />
-                      <span className="font-medium text-lg">Chat Messages</span>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="font-semibold"
-                    >
-                      View History
-                    </Button>
+                <div 
+                  className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer" 
+                  onClick={handleStartChat}
+                >
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                    <div className="text-xl font-medium">Chat History</div>
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Click to view or start a conversation with {profileUser.fullname}
+                    View conversation with {profileUser.fullname}
                   </p>
                 </div>
               )}
