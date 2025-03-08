@@ -124,14 +124,16 @@ export function UserProfileDialog({ username, open, onOpenChange }: UserProfileD
               >
                 Posts
               </Button>
-              <Button
-                variant={activeTab === 'chats' ? "default" : "outline"}
-                onClick={() => setActiveTab('chats')}
-                className="flex-1"
-              >
-                <Clock className="h-4 w-4 mr-2" />
-                Chat History
-              </Button>
+              {currentUser?.id !== profileUser.id && (
+                <Button
+                  variant={activeTab === 'chats' ? "default" : "outline"}
+                  onClick={() => setActiveTab('chats')}
+                  className="flex-1"
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Chat History
+                </Button>
+              )}
             </div>
 
             {activeTab === 'posts' ? (
@@ -153,18 +155,27 @@ export function UserProfileDialog({ username, open, onOpenChange }: UserProfileD
                 )}
               </div>
             ) : (
-              <div className="text-center p-4">
+              <div className="p-4 space-y-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-medium mb-2">Chat with {profileUser.fullname}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    View your conversation history or start a new chat
+                  </p>
+                </div>
                 <Button
-                  onClick={() => {
-                    handleStartChat();
-                  }}
-                  className="w-full"
+                  onClick={handleStartChat}
+                  className="w-full h-12 text-lg"
+                  size="lg"
                 >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  View Chat History
+                  <MessageSquare className="h-5 w-5 mr-2" />
+                  {createChatMutation.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    "Open Chat"
+                  )}
                 </Button>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Click to view your conversation history with {profileUser.fullname}
+                <p className="text-sm text-center text-muted-foreground mt-2">
+                  You'll be redirected to your conversation with {profileUser.fullname}
                 </p>
               </div>
             )}
