@@ -1,12 +1,16 @@
+import { eq, sql } from "drizzle-orm";
+import { db } from "./db";
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertPostSchema, insertCommentSchema, insertChatSchema, insertMessageSchema } from "@shared/schema";
+import { insertPostSchema, insertCommentSchema, insertChatSchema, insertMessageSchema, insertUserSchema, verifyOtpSchema, users } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import twilio from "twilio";
+import { randomInt } from "crypto";
 
 // Configure multer for storing files
 const uploadDir = path.join(process.cwd(), "uploads");
@@ -564,6 +568,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log("Client disconnected");
     });
+  });
+
+  app.post("/api/auth/request-otp", async (req, res) => {
+    try {
+      const { phoneNumber } = req.body;
+
+      // Generate a 6-digit OTP
+      const otp = randomInt(100000, 999999).toString();
+
+      // Initialize Twilio client
+      const client = twilio(
+        process.env.TWILIO_ACCOUNT_SID,
+        process.env.TWILIO_AUTH_TOKEN
+      );
+
+      // Send OTP via SMS
+      await client.messages.create({
+        body: `Your verification code is: ${otp}`,
+        to: phoneNumber,
+        from: process.env.TWILIO_PHONE_NUMBER,
+      });
+
+      // Store OTP in database
+      await db
+        .insert(users)
+        .values({
+          phoneNumber,
+          verificationCode: otp,
+          verificationExpiry: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+        })
+        .onConflictDoUpdate({
+          target: users.phoneNumber,
+          set: {
+            verificationCode: otp,
+            verificationExpiry: new Date(Date.now() + 5 * 60 * 1000),
+          },
+        });
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      res.status(500).json({ error: "Failed to send verification code" });
+    }
+  });
+
+  app.post("/api/auth/verify-otp", async (req, res) => {
+    try {
+      const { phoneNumber, code } = verifyOtpSchema.parse(req.body);
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.phoneNumber, phoneNumber))
+        .where(eq(users.verificationCode, code))
+        .where(sql`${users.verificationExpiry} > NOW()`);
+
+      if (!user) {
+        return res.status(400).json({ error: "Invalid or expired verification code" });
+      }
+
+      // Mark phone as verified and clear verification data
+      await db
+        .update(users)
+        .set({
+          isPhoneVerified: true,
+          verificationCode: null,
+          verificationExpiry: null,
+        })
+        .where(eq(users.id, user.id));
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+      res.status(500).json({ error: "Failed to verify code" });
+    }
   });
 
   return httpServer;

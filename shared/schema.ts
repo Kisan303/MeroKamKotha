@@ -7,6 +7,28 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   fullname: text("fullname").notNull(),
   password: text("password").notNull(),
+  phoneNumber: text("phone_number").notNull().unique(),
+  isPhoneVerified: boolean("is_phone_verified").notNull().default(false),
+  verificationCode: text("verification_code"),
+  verificationExpiry: timestamp("verification_expiry"),
+});
+
+// Update insert schema to include phone number
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  isPhoneVerified: true,
+  verificationCode: true,
+  verificationExpiry: true,
+}).extend({
+  phoneNumber: z.string()
+    .min(10, "Phone number is required")
+    .regex(/^\+[1-9]\d{1,14}$/, "Invalid phone number format. Must be E.164 format"),
+});
+
+// Schema for OTP verification
+export const verifyOtpSchema = z.object({
+  phoneNumber: z.string(),
+  code: z.string().length(6, "Verification code must be 6 digits"),
 });
 
 export const chats = pgTable("chats", {
@@ -82,7 +104,6 @@ export const insertMessageSchema = z.object({
 });
 
 // Keep existing schemas
-export const insertUserSchema = createInsertSchema(users);
 export const insertPostSchema = z.object({
   type: z.enum(["room", "job"]),
   title: z.string().min(1, "Title is required"),
@@ -100,7 +121,7 @@ export const insertPostSchema = z.object({
   path: ["price"],
 });
 
-export const insertCommentSchema = createInsertSchema(comments).omit({ 
+export const insertCommentSchema = createInsertSchema(comments).omit({
   id: true,
   userId: true,
   createdAt: true,
@@ -121,3 +142,4 @@ export type Message = typeof messages.$inferSelect;
 export type InsertChat = z.infer<typeof insertChatSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type UserBlock = typeof userBlocks.$inferSelect;
+export type VerifyOtp = z.infer<typeof verifyOtpSchema>;
