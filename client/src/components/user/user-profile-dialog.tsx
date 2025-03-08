@@ -55,9 +55,9 @@ export function UserProfileDialog({ username, open, onOpenChange }: UserProfileD
       if (!res.ok) throw new Error("Failed to create chat");
       return await res.json();
     },
-    onSuccess: (chat) => {
+    onSuccess: () => {
       onOpenChange(false);
-      navigate(`/chat/${chat.id}`);
+      navigate('/chat'); // Navigate to the main chat page
     },
     onError: (error: Error) => {
       toast({
