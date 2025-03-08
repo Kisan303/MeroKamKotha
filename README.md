@@ -115,6 +115,18 @@ The application uses PostgreSQL with Drizzle ORM. Key tables include:
 4. Push to the branch
 5. Create a Pull Request
 
+## Documentation
+
+For detailed documentation, please refer to the following guides in the `docs` directory:
+
+- [Setup Guide](docs/setup.md) - Complete setup instructions
+- [Deployment Guide](docs/deployment.md) - Production deployment steps
+- [API Documentation](docs/api.md) - API endpoints and usage
+- [Database Schema](docs/database.md) - Database structure and relationships
+- [Frontend Components](docs/frontend.md) - UI components and features
+- [Architecture Overview](docs/architecture.md) - System design and tech stack
+- [Features Documentation](docs/features.md) - Detailed feature descriptions
+
 ## License
 
 MIT License
