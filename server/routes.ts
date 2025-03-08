@@ -613,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.sendStatus(200);
     } catch (error: any) {
       console.error("Error sending OTP:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: error.message || "Failed to send verification code"
       });
     }
@@ -648,6 +648,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
       res.status(500).json({ error: error.message || "Failed to verify code" });
+    }
+  });
+
+  // New endpoint to register user after phone verification
+  app.post("/api/auth/register-verified", async (req, res) => {
+    try {
+      const { phoneNumber, username, password, fullname } = req.body;
+
+      // Update the existing user record with the registration data
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          username,
+          password,
+          fullname,
+        })
+        .where(eq(users.phoneNumber, phoneNumber))
+        .where(eq(users.isPhoneVerified, true))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(400).json({ error: "Phone number not verified" });
+      }
+
+      res.json(updatedUser);
+    } catch (error: any) {
+      console.error("Error registering user:", error);
+      res.status(500).json({ error: error.message || "Failed to register user" });
     }
   });
 

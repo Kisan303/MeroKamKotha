@@ -24,8 +24,8 @@ export function RegisterForm() {
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
       username: "",
-      fullname: "",
       password: "",
+      fullname: "",
       phoneNumber: "",
     },
   });
@@ -69,8 +69,6 @@ export function RegisterForm() {
         throw new Error("Registration data not found");
       }
 
-      console.log("Verifying OTP:", code, "for phone:", formData.phoneNumber);
-
       // First verify the OTP
       const verifyRes = await fetch("/api/auth/verify-otp", {
         method: "POST",
@@ -86,13 +84,25 @@ export function RegisterForm() {
         throw new Error(errorData.error || "Invalid verification code");
       }
 
-      console.log("OTP verified, proceeding with registration");
+      // Then register the user
+      const registerRes = await fetch("/api/auth/register-verified", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-      // If OTP is valid, register the user with the stored form data
+      if (!registerRes.ok) {
+        const errorData = await registerRes.json();
+        throw new Error(errorData.error || "Failed to register user");
+      }
+
+      const user = await registerRes.json();
+      console.log("Registration successful:", user);
+
+      // Login automatically after registration
+      const { username, password } = formData;
       await registerMutation.mutateAsync(formData);
-      console.log("Registration successful");
 
-      // Show success message and redirect
       toast({
         title: "Registration successful",
         description: "You have been successfully registered",
