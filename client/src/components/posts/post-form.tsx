@@ -40,9 +40,7 @@ export function PostForm({ initialData, onSuccess }: {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const form = useForm<InsertPost>({
-    resolver: zodResolver(insertPostSchema.extend({
-      images: initialData?.type === "room" ? insertPostSchema.shape.images : undefined
-    })),
+    resolver: zodResolver(insertPostSchema),
     defaultValues: initialData || {
       type: "room",
       title: "",
