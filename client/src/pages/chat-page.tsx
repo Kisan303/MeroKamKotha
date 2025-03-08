@@ -6,17 +6,24 @@ import { ChatInput } from "@/components/chat/chat-input";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { useAuth } from "@/hooks/use-auth";
 import { socket } from "@/lib/socket";
+import { useTour } from "@/hooks/use-tour";
 
 export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [showMobileList, setShowMobileList] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
   const { user: currentUser } = useAuth();
+  const { startTour } = useTour();
 
   // Find the other participant in the selected chat
   const chatParticipant = selectedChat?.participants?.find(
     (p: User) => p.id !== currentUser?.id
   );
+
+  useEffect(() => {
+    // Start the tour when the chat page is first visited
+    startTour('/chat');
+  }, []);
 
   // Handle current user's online status and track other users' status
   useEffect(() => {
@@ -62,7 +69,7 @@ export default function ChatPage() {
       {/* Chat List - Hidden on mobile when chat is selected */}
       <div className={`${
         selectedChat && !showMobileList ? 'hidden' : 'block'
-      } md:block w-full md:w-80 flex-shrink-0 border-r`}>
+      } md:block w-full md:w-80 flex-shrink-0 border-r chat-list`}>
         <ChatList 
           onSelectChat={(chat) => {
             setSelectedChat(chat);
@@ -76,7 +83,7 @@ export default function ChatPage() {
       {/* Chat Area - Hidden on mobile when showing chat list */}
       <div className={`${
         showMobileList ? 'hidden' : 'block'
-      } md:block flex-1 flex flex-col`}>
+      } md:block flex-1 flex flex-col chat-messages`}>
         {selectedChat ? (
           <>
             <ChatHeader 
@@ -85,7 +92,7 @@ export default function ChatPage() {
               isOnline={chatParticipant ? onlineUsers.has(chatParticipant.id) : false}
             />
             <ChatMessages chatId={selectedChat.id} />
-            <ChatInput chatId={selectedChat.id} />
+            <ChatInput chatId={selectedChat.id} className="chat-input" />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
