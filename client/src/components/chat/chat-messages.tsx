@@ -18,7 +18,18 @@ export function ChatMessages({ chatId }: { chatId: number }) {
 
   const { data: messages = [], isLoading } = useQuery<MessageWithUser[]>({
     queryKey: ["/api/chats", chatId, "messages"],
+    queryFn: async () => {
+      console.log(`Fetching messages for chat ${chatId}`);
+      const response = await fetch(`/api/chats/${chatId}/messages`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch messages');
+      }
+      const data = await response.json();
+      console.log(`Received ${data.length} messages for chat ${chatId}`, data);
+      return data;
+    },
     enabled: !!chatId,
+    staleTime: 1000 * 60,
   });
 
   useEffect(() => {
@@ -61,31 +72,41 @@ export function ChatMessages({ chatId }: { chatId: number }) {
   return (
     <ScrollArea className="h-[calc(100vh-8rem)] px-4">
       <div className="space-y-4">
-        {messages.map((message) => {
-          const isOwnMessage = message.userId === currentUser?.id;
-          return (
-            <div
-              key={message.id}
-              className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
-            >
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p>No messages yet. Start the conversation!</p>
+          </div>
+        ) : (
+          messages.map((message) => {
+            const isOwnMessage = message.userId === currentUser?.id;
+            if (!message.user) {
+              console.error('Message without user data:', message);
+              return null;
+            }
+            return (
               <div
-                className={`max-w-[70%] rounded-lg p-3 ${
-                  isOwnMessage
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
-                }`}
+                key={message.id}
+                className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
               >
-                <p className="text-sm font-medium mb-1">
-                  {message.user.username}
-                </p>
-                <p className="text-sm break-words">{message.content}</p>
-                <p className="text-xs opacity-70 mt-1">
-                  {format(new Date(message.createdAt), "p")}
-                </p>
+                <div
+                  className={`max-w-[70%] rounded-lg p-3 ${
+                    isOwnMessage
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted"
+                  }`}
+                >
+                  <p className="text-sm font-medium mb-1">
+                    {message.user.username}
+                  </p>
+                  <p className="text-sm break-words">{message.content}</p>
+                  <p className="text-xs opacity-70 mt-1">
+                    {format(new Date(message.createdAt), "p")}
+                  </p>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
         <div ref={messagesEndRef} />
       </div>
     </ScrollArea>

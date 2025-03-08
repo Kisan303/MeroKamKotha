@@ -369,6 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update the chat creation route with better error handling
   app.post("/api/chats", requireAuth, async (req, res) => {
     try {
       console.log("Creating chat with data:", req.body);
@@ -439,7 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       io.to(`chat-${chatId}`).emit("new-message", messageWithUser);
 
       res.json(messageWithUser);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending message:", error);
       res.status(400).json({ error: error.message || "Failed to send message" });
     }
