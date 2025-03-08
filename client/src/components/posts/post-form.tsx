@@ -11,22 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, X, ImagePlus, Building2, Briefcase, DollarSign, MapPin } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogTitle, DialogClose } from "@/components/ui/dialog";
 
 export function PostForm({ initialData, onSuccess }: {
@@ -36,8 +22,9 @@ export function PostForm({ initialData, onSuccess }: {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.images || []);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const isEditMode = !!initialData?.id;
 
   const form = useForm<InsertPost>({
     resolver: zodResolver(insertPostSchema),
@@ -110,52 +97,67 @@ export function PostForm({ initialData, onSuccess }: {
     mutationFn: async (data: InsertPost) => {
       console.log("Starting mutation with data:", data);
 
-      if (data.type === "room") {
-        if (files.length === 0) {
-          throw new Error("At least one image is required for room posts");
-        }
+      if (data.type === "room" && !isEditMode && files.length === 0) {
+        throw new Error("At least one image is required for new room posts");
+      }
 
-        // Create FormData to send files
+      if (isEditMode) {
+        // For editing: If no new files are uploaded, keep existing images
+        if (files.length === 0) {
+          const res = await apiRequest("PATCH", `/api/posts/${initialData.id}`, data);
+          if (!res.ok) {
+            throw new Error("Failed to update post");
+          }
+          return await res.json();
+        }
+      }
+
+      // For new posts or edits with new images
+      if (data.type === "room" && files.length > 0) {
         const formData = new FormData();
         files.forEach((file) => {
           formData.append('images', file);
         });
 
-        // Add other post data
         formData.append('type', data.type);
         formData.append('title', data.title);
         formData.append('description', data.description);
         formData.append('price', data.price?.toString() || '');
         formData.append('location', data.location);
 
-        console.log("Sending post data with images");
-        const res = await fetch('/api/posts', {
-          method: 'POST',
+        const endpoint = isEditMode ? `/api/posts/${initialData.id}` : '/api/posts';
+        const method = isEditMode ? 'PATCH' : 'POST';
+
+        const res = await fetch(endpoint, {
+          method,
           body: formData,
         });
 
         if (!res.ok) {
           const errorText = await res.text();
           console.error("Server error response:", errorText);
-          throw new Error(errorText || "Failed to create post");
+          throw new Error(errorText || `Failed to ${isEditMode ? 'update' : 'create'} post`);
         }
 
         return await res.json();
       } else {
-        // For job posts (no images)
-        const res = await apiRequest("POST", "/api/posts", data);
+        // For job posts or room posts without new images
+        const res = await apiRequest(
+          isEditMode ? "PATCH" : "POST",
+          isEditMode ? `/api/posts/${initialData.id}` : "/api/posts",
+          data
+        );
         if (!res.ok) {
-          throw new Error("Failed to create post");
+          throw new Error(`Failed to ${isEditMode ? 'update' : 'create'} post`);
         }
         return await res.json();
       }
     },
     onSuccess: () => {
-      console.log("Post created successfully");
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       toast({
         title: "Success",
-        description: "Post created successfully",
+        description: `Post ${isEditMode ? 'updated' : 'created'} successfully`,
       });
       form.reset();
       setPreviews([]);
@@ -170,7 +172,7 @@ export function PostForm({ initialData, onSuccess }: {
       console.error("Mutation error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create post",
+        description: error.message || `Failed to ${isEditMode ? 'update' : 'create'} post`,
         variant: "destructive",
       });
     },
@@ -214,7 +216,8 @@ export function PostForm({ initialData, onSuccess }: {
           });
           return;
         }
-        if (files.length === 0) {
+        // Only check for images on new room posts
+        if (!isEditMode && files.length === 0 && !initialData?.images?.length) {
           toast({
             title: "Error",
             description: "At least one image is required for room posts",
@@ -234,7 +237,7 @@ export function PostForm({ initialData, onSuccess }: {
     <ScrollArea className="h-[80vh] w-full">
       <div className="space-y-6 px-6">
         <DialogTitle className="text-xl font-bold">
-          {initialData?.id ? "Edit Post" : "Create New Post"}
+          {isEditMode ? "Edit Post" : "Create New Post"}
         </DialogTitle>
 
         <Form {...form}>
@@ -435,7 +438,7 @@ export function PostForm({ initialData, onSuccess }: {
                   <FormDescription>
                     Upload 1-5 high-quality images (max 5MB each)
                   </FormDescription>
-                  {postType === "room" && previews.length === 0 && (
+                  {postType === "room" && previews.length === 0 && !isEditMode && (
                     <FormMessage>At least one image is required for room posts</FormMessage>
                   )}
                 </FormItem>
@@ -456,10 +459,10 @@ export function PostForm({ initialData, onSuccess }: {
                 {createMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    {isEditMode ? "Updating..." : "Creating..."}
                   </>
                 ) : (
-                  "Create Post"
+                  isEditMode ? "Update Post" : "Create Post"
                 )}
               </Button>
             </div>
