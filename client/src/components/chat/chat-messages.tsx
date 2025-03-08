@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { socket } from "@/lib/socket";
+import { Loader2 } from "lucide-react";
 
 type MessageWithUser = Message & {
   user: User;
@@ -13,7 +14,7 @@ type MessageWithUser = Message & {
 export function ChatMessages({ chatId }: { chatId: number }) {
   const { user: currentUser } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   const { data: messages = [], isLoading } = useQuery<MessageWithUser[]>({
     queryKey: ["/api/chats", chatId, "messages"],
     enabled: !!chatId,
@@ -31,7 +32,11 @@ export function ChatMessages({ chatId }: { chatId: number }) {
   }, [messages]);
 
   if (isLoading) {
-    return <div>Loading messages...</div>;
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   return (
@@ -52,7 +57,7 @@ export function ChatMessages({ chatId }: { chatId: number }) {
                 }`}
               >
                 <p className="text-sm font-medium mb-1">
-                  {message.user.username}
+                  {message.user?.username || "Unknown User"}
                 </p>
                 <p className="text-sm break-words">{message.content}</p>
                 <p className="text-xs opacity-70 mt-1">
