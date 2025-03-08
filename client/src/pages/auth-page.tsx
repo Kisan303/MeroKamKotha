@@ -9,10 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { RegisterForm } from "@/components/auth/register-form";
 
 export default function AuthPage() {
-  const { user, loginMutation } = useAuth();
+  const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -25,12 +24,25 @@ export default function AuthPage() {
       username: "",
       password: "",
       fullname: "",
-      phoneNumber: "",
+    },
+  });
+
+  const registerForm = useForm<InsertUser>({
+    resolver: zodResolver(insertUserSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      fullname: "",
     },
   });
 
   const onLoginSuccess = () => {
     setLocation("/profile");
+  };
+
+  const onRegisterSuccess = () => {
+    const { username, password } = registerForm.getValues();
+    loginMutation.mutate({ username, password }, { onSuccess: onLoginSuccess });
   };
 
   return (
@@ -86,7 +98,52 @@ export default function AuthPage() {
               </TabsContent>
 
               <TabsContent value="register">
-                <RegisterForm />
+                <Form {...registerForm}>
+                  <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data, { onSuccess: onRegisterSuccess }))} className="space-y-4">
+                    <FormField
+                      control={registerForm.control}
+                      name="fullname"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Username</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+                      Register
+                    </Button>
+                  </form>
+                </Form>
               </TabsContent>
             </Tabs>
           </CardContent>

@@ -1,16 +1,12 @@
-import { eq, sql } from "drizzle-orm";
-import { db } from "./db";
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertPostSchema, insertCommentSchema, insertChatSchema, insertMessageSchema, insertUserSchema, verifyOtpSchema, users } from "@shared/schema";
+import { insertPostSchema, insertCommentSchema, insertChatSchema, insertMessageSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import twilio from "twilio";
-import { randomInt } from "crypto";
 
 // Configure multer for storing files
 const uploadDir = path.join(process.cwd(), "uploads");
@@ -568,135 +564,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log("Client disconnected");
     });
-  });
-
-  app.post("/api/auth/request-otp", async (req, res) => {
-    try {
-      const { phoneNumber } = req.body;
-
-      console.log("Requesting OTP for:", phoneNumber);
-
-      // Generate a 6-digit OTP
-      const otp = randomInt(100000, 999999).toString();
-
-      // Initialize Twilio client
-      const client = twilio(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
-      );
-
-      // Send OTP via SMS with custom message
-      await client.messages.create({
-        body: `Thank you for registering with Mero KamKotha developed by Kisan Rai. Here is your verification code: ${otp}`,
-        to: phoneNumber,
-        from: process.env.TWILIO_PHONE_NUMBER,
-      });
-
-      // Store OTP in database
-      await db
-        .insert(users)
-        .values({
-          phoneNumber,
-          verificationCode: otp,
-          verificationExpiry: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
-          username: '', // Temporary values that will be updated after verification
-          fullname: '',
-          password: '',
-          isPhoneVerified: false,
-        })
-        .onConflictDoUpdate({
-          target: users.phoneNumber,
-          set: {
-            verificationCode: otp,
-            verificationExpiry: new Date(Date.now() + 5 * 60 * 1000),
-          },
-        });
-
-      res.sendStatus(200);
-    } catch (error: any) {
-      console.error("Error sending OTP:", error);
-      res.status(500).json({
-        error: error.message || "Failed to send verification code"
-      });
-    }
-  });
-
-  app.post("/api/auth/verify-otp", async (req, res) => {
-    try {
-      const { phoneNumber, code } = verifyOtpSchema.parse(req.body);
-
-      // Find user with matching phone and code that hasn't expired
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.phoneNumber, phoneNumber))
-        .where(eq(users.verificationCode, code))
-        .where(sql`${users.verificationExpiry} > NOW()`);
-
-      if (!user) {
-        return res.status(400).json({ error: "Invalid or expired verification code" });
-      }
-
-      // Mark phone as verified and clear verification data
-      await db
-        .update(users)
-        .set({
-          isPhoneVerified: true,
-          verificationCode: null,
-          verificationExpiry: null,
-        })
-        .where(eq(users.id, user.id));
-
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("Error verifying OTP:", error);
-      res.status(500).json({ error: error.message || "Failed to verify code" });
-    }
-  });
-
-  app.post("/api/auth/register-verified", async (req, res) => {
-    try {
-      const { phoneNumber, username, password, fullname } = req.body;
-
-      // Check if the phone number is verified
-      const [verifiedUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.phoneNumber, phoneNumber))
-        .where(eq(users.isPhoneVerified, true));
-
-      if (!verifiedUser) {
-        return res.status(400).json({ error: "Phone number not verified" });
-      }
-
-      // Check if username already exists (excluding temporary records)
-      const [existingUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.username, username))
-        .where(sql`${users.username} != ''`)
-        .where(sql`${users.phoneNumber} != ${phoneNumber}`);
-
-      if (existingUser) {
-        return res.status(400).json({ error: "Username already exists" });
-      }
-
-      // Update the verified user record with registration data
-      const [updatedUser] = await db
-        .update(users)
-        .set({
-          username,
-          password,
-          fullname,
-        })
-        .where(eq(users.phoneNumber, phoneNumber))
-        .returning();
-
-      res.json(updatedUser);
-    } catch (error: any) {
-      console.error("Error registering user:", error);
-      res.status(500).json({ error: error.message || "Failed to register user" });
-    }
   });
 
   return httpServer;
