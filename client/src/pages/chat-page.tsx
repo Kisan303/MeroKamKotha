@@ -10,6 +10,7 @@ import { socket } from "@/lib/socket";
 export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [showMobileList, setShowMobileList] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
   const { user: currentUser } = useAuth();
 
   // Find the other participant in the selected chat
@@ -17,15 +18,31 @@ export default function ChatPage() {
     (p: User) => p.id !== currentUser?.id
   );
 
-  // Handle current user's online status
+  // Handle current user's online status and track other users' status
   useEffect(() => {
     if (!currentUser) return;
 
     // Emit online status when component mounts
     socket.emit("user-online", currentUser.id);
 
+    // Listen for user status changes
+    const handleStatusChange = (data: { userId: number; status: 'online' | 'offline' }) => {
+      setOnlineUsers(prev => {
+        const newSet = new Set(prev);
+        if (data.status === 'online') {
+          newSet.add(data.userId);
+        } else {
+          newSet.delete(data.userId);
+        }
+        return newSet;
+      });
+    };
+
+    socket.on("user-status-change", handleStatusChange);
+
     // Handle cleanup on unmount
     return () => {
+      socket.off("user-status-change", handleStatusChange);
       socket.disconnect();
     };
   }, [currentUser]);
@@ -42,6 +59,7 @@ export default function ChatPage() {
             setShowMobileList(false);
           }}
           selectedChatId={selectedChat?.id}
+          onlineUsers={onlineUsers}
         />
       </div>
 
@@ -54,6 +72,7 @@ export default function ChatPage() {
             <ChatHeader 
               participant={chatParticipant}
               onBack={() => setShowMobileList(true)}
+              isOnline={chatParticipant ? onlineUsers.has(chatParticipant.id) : false}
             />
             <ChatMessages chatId={selectedChat.id} />
             <ChatInput chatId={selectedChat.id} />

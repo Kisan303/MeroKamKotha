@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { socket } from "@/lib/socket";
@@ -35,41 +35,21 @@ type ChatWithParticipants = Chat & {
   };
 };
 
-export function ChatList({ onSelectChat, selectedChatId }: { 
+interface ChatListProps {
   onSelectChat: (chat: ChatWithParticipants) => void;
   selectedChatId?: number;
-}) {
+  onlineUsers: Set<number>;
+}
+
+export function ChatList({ onSelectChat, selectedChatId, onlineUsers }: ChatListProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [chatToDelete, setChatToDelete] = useState<number | null>(null);
-  const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
 
   const { data: chats = [], isLoading } = useQuery<ChatWithParticipants[]>({
     queryKey: ["/api/chats"],
   });
 
-  useEffect(() => {
-    if (!currentUser) return;
-
-    // Listen for user status changes
-    const handleStatusChange = (data: { userId: number; status: 'online' | 'offline' }) => {
-      setOnlineUsers(prev => {
-        const newSet = new Set(prev);
-        if (data.status === 'online') {
-          newSet.add(data.userId);
-        } else {
-          newSet.delete(data.userId);
-        }
-        return newSet;
-      });
-    };
-
-    socket.on("user-status-change", handleStatusChange);
-
-    return () => {
-      socket.off("user-status-change", handleStatusChange);
-    };
-  }, [currentUser]);
 
   const deleteChatMutation = useMutation({
     mutationFn: async (chatId: number) => {

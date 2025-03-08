@@ -8,34 +8,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLocation } from "wouter";
-import { useState, useEffect } from "react";
-import { socket } from "@/lib/socket";
 
 interface ChatHeaderProps {
   participant?: User;
   onBack?: () => void;
+  isOnline: boolean;
 }
 
-export function ChatHeader({ participant, onBack }: ChatHeaderProps) {
+export function ChatHeader({ participant, onBack, isOnline }: ChatHeaderProps) {
   const [, navigate] = useLocation();
-  const [isOnline, setIsOnline] = useState(false);
-
-  useEffect(() => {
-    if (!participant) return;
-
-    // Listen for user status changes
-    const handleStatusChange = (data: { userId: number; status: 'online' | 'offline' }) => {
-      if (data.userId === participant.id) {
-        setIsOnline(data.status === 'online');
-      }
-    };
-
-    socket.on("user-status-change", handleStatusChange);
-
-    return () => {
-      socket.off("user-status-change", handleStatusChange);
-    };
-  }, [participant]);
 
   if (!participant) return null;
 
