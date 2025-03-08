@@ -22,9 +22,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { socket } from "@/lib/socket";
 
 type ChatWithParticipants = Chat & {
   participants: User[];
@@ -41,10 +42,37 @@ export function ChatList({ onSelectChat, selectedChatId }: {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [chatToDelete, setChatToDelete] = useState<number | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
 
   const { data: chats = [], isLoading } = useQuery<ChatWithParticipants[]>({
     queryKey: ["/api/chats"],
   });
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Emit online status when component mounts
+    socket.emit("user-online", currentUser.id);
+
+    // Listen for user status changes
+    const handleStatusChange = (data: { userId: number; status: 'online' | 'offline' }) => {
+      setOnlineUsers(prev => {
+        const newSet = new Set(prev);
+        if (data.status === 'online') {
+          newSet.add(data.userId);
+        } else {
+          newSet.delete(data.userId);
+        }
+        return newSet;
+      });
+    };
+
+    socket.on("user-status-change", handleStatusChange);
+
+    return () => {
+      socket.off("user-status-change", handleStatusChange);
+    };
+  }, [currentUser]);
 
   const deleteChatMutation = useMutation({
     mutationFn: async (chatId: number) => {
@@ -113,6 +141,8 @@ export function ChatList({ onSelectChat, selectedChatId }: {
             const otherParticipant = chat.participants.find(p => p.id !== currentUser?.id);
             if (!otherParticipant) return null;
 
+            const isOnline = onlineUsers.has(otherParticipant.id);
+
             return (
               <div
                 key={chat.id}
@@ -128,11 +158,16 @@ export function ChatList({ onSelectChat, selectedChatId }: {
                   )}
                   onClick={() => onSelectChat(chat)}
                 >
-                  {/* Avatar */}
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg font-medium text-primary">
-                      {otherParticipant.username.slice(0, 2).toUpperCase()}
-                    </span>
+                  {/* Avatar with Online Status */}
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg font-medium text-primary">
+                        {otherParticipant.username.slice(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+                    {isOnline && (
+                      <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border-2 border-background" />
+                    )}
                   </div>
 
                   {/* Chat Info */}
@@ -147,14 +182,19 @@ export function ChatList({ onSelectChat, selectedChatId }: {
                         </span>
                       )}
                     </div>
-                    {chat.lastMessage && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <CheckCheck className="h-3 w-3 text-primary/60 flex-shrink-0" />
-                        <p className="text-sm text-muted-foreground truncate">
-                          {chat.lastMessage.content}
-                        </p>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-muted-foreground">
+                        {isOnline ? 'Online' : 'Offline'}
+                      </span>
+                      {chat.lastMessage && (
+                        <>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-sm text-muted-foreground truncate flex-1">
+                            {chat.lastMessage.content}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 

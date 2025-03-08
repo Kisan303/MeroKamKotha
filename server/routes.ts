@@ -523,8 +523,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update Socket.IO connection handling to include chat rooms
+  // Track online users
+  const onlineUsers = new Map<number, string>();
+
   io.on("connection", (socket) => {
     console.log("Client connected");
+
+    socket.on("user-online", (userId: number) => {
+      onlineUsers.set(userId, socket.id);
+      io.emit("user-status-change", { userId, status: "online" });
+    });
 
     socket.on("join-chat", (chatId: string) => {
       socket.join(`chat-${chatId}`);
@@ -543,6 +551,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     socket.on("disconnect", () => {
+      // Find and remove the disconnected user
+      for (const [userId, socketId] of onlineUsers.entries()) {
+        if (socketId === socket.id) {
+          onlineUsers.delete(userId);
+          io.emit("user-status-change", { userId, status: "offline" });
+          break;
+        }
+      }
       console.log("Client disconnected");
     });
   });
