@@ -316,7 +316,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // Add these routes after the existing routes
+  // Add these routes after the existing user routes
+  app.get("/api/users/:username", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUserByUsername(req.params.username);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get user" });
+    }
+  });
+
+  app.get("/api/users/:username/posts", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUserByUsername(req.params.username);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const posts = await storage.getUserPosts(user.id);
+      const postsWithUsernames = await Promise.all(
+        posts.map(async (post) => {
+          const postUser = await storage.getUser(post.userId);
+          return { ...post, username: postUser?.username };
+        })
+      );
+      res.json(postsWithUsernames);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get user posts" });
+    }
+  });
+
   // Chat endpoints
   app.get("/api/chats", requireAuth, async (req, res) => {
     try {

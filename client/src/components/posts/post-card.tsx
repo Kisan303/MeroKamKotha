@@ -6,13 +6,13 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { 
-  Bookmark, 
-  MessageSquare, 
-  Clock, 
-  UserCircle, 
-  MoreVertical, 
-  Edit, 
+import {
+  Bookmark,
+  MessageSquare,
+  Clock,
+  UserCircle,
+  MoreVertical,
+  Edit,
   Trash,
   ChevronDown,
   ChevronUp
@@ -26,6 +26,7 @@ import { CommentThread } from './comment-thread';
 import { Input } from "@/components/ui/input";
 import { PostForm } from "./post-form";
 import { ImageSlider } from "./image-slider";
+import { UserProfileDialog } from "@/components/user/user-profile-dialog";
 import { AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -63,6 +64,7 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
 
   // Function to check if description is long
   const isLongDescription = post.description.length > 150;
@@ -238,9 +240,12 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
             >
               <div className="flex items-center gap-2">
                 <UserCircle className="h-5 w-5 text-muted-foreground" />
-                <p className="text-sm font-medium">
+                <button
+                  onClick={() => setShowProfileDialog(true)}
+                  className="text-sm font-medium hover:underline"
+                >
                   {post.username || "Unknown"}
-                </p>
+                </button>
               </div>
               <motion.h2
                 initial={{ y: -10, opacity: 0 }}
@@ -487,6 +492,13 @@ export function PostCard({ post, inSavedPosts = false }: PostCardProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        {post.username && (
+          <UserProfileDialog
+            username={post.username}
+            open={showProfileDialog}
+            onOpenChange={setShowProfileDialog}
+          />
+        )}
       </Card>
     </motion.div>
   );

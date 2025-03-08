@@ -46,6 +46,7 @@ export interface IStorage {
   createMessage(userId: number, message: InsertMessage): Promise<Message>;
   updateChatLastMessage(chatId: number): Promise<void>;
   sessionStore: session.Store;
+  getUserPosts(userId: number): Promise<Post[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -251,6 +252,13 @@ export class DatabaseStorage implements IStorage {
       .update(chats)
       .set({ lastMessageAt: new Date() })
       .where(eq(chats.id, chatId));
+  }
+  async getUserPosts(userId: number): Promise<Post[]> {
+    return await db
+      .select()
+      .from(posts)
+      .where(eq(posts.userId, userId))
+      .orderBy(sql`${posts.createdAt} DESC`);
   }
 }
 
