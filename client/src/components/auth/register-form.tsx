@@ -98,11 +98,13 @@ export function RegisterForm() {
 
   if (isVerifying) {
     return (
-      <div className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Verify Phone Number</h2>
-        <p className="text-muted-foreground">
-          Enter the verification code sent to {formData?.phoneNumber}
-        </p>
+      <div className="space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold tracking-tight">Verify Phone Number</h2>
+          <p className="text-muted-foreground mt-2">
+            Enter the verification code sent to {formData?.phoneNumber}
+          </p>
+        </div>
         <OTPInput
           maxLength={6}
           onComplete={verifyOtpAndRegister}
