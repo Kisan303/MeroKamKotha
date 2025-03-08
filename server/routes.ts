@@ -597,6 +597,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           phoneNumber,
           verificationCode: otp,
           verificationExpiry: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+          username: '', // Temporary values that will be updated after verification
+          fullname: '',
+          password: '',
+          isPhoneVerified: false,
         })
         .onConflictDoUpdate({
           target: users.phoneNumber,
@@ -607,9 +611,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
       res.sendStatus(200);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending OTP:", error);
-      res.status(500).json({ error: "Failed to send verification code" });
+      res.status(500).json({ 
+        error: error.message || "Failed to send verification code"
+      });
     }
   });
 

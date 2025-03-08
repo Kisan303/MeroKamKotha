@@ -14,7 +14,7 @@ import { useLocation } from "wouter";
 
 export function RegisterForm() {
   const [isVerifying, setIsVerifying] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [formData, setFormData] = useState<InsertUser | null>(null);
   const { toast } = useToast();
   const { registerMutation } = useAuth();
   const [, navigate] = useLocation();
@@ -36,16 +36,19 @@ export function RegisterForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phoneNumber: data.phoneNumber }),
       });
-      
-      if (!res.ok) throw new Error("Failed to send verification code");
-      
-      setPhoneNumber(data.phoneNumber);
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to send verification code");
+      }
+
+      setFormData(data);
       setIsVerifying(true);
       toast({
         title: "Verification code sent",
         description: "Please check your phone for the verification code",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
@@ -56,25 +59,31 @@ export function RegisterForm() {
 
   const verifyOtpAndRegister = async (code: string) => {
     try {
+      if (!formData) {
+        throw new Error("Registration data not found");
+      }
+
       // Verify OTP
       const verifyRes = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phoneNumber,
+          phoneNumber: formData.phoneNumber,
           code,
         }),
       });
 
-      if (!verifyRes.ok) throw new Error("Invalid verification code");
+      if (!verifyRes.ok) {
+        const errorData = await verifyRes.json();
+        throw new Error(errorData.error || "Invalid verification code");
+      }
 
       // If OTP is valid, register the user
-      const formData = form.getValues();
       await registerMutation.mutateAsync(formData);
-      
+
       // Redirect to profile page on success
       navigate("/profile");
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
@@ -92,7 +101,7 @@ export function RegisterForm() {
       <div className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Verify Phone Number</h2>
         <p className="text-muted-foreground">
-          Enter the verification code sent to {phoneNumber}
+          Enter the verification code sent to {formData?.phoneNumber}
         </p>
         <OTPInput
           maxLength={6}
