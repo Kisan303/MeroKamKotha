@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Post, User } from "@shared/schema";
@@ -22,6 +22,7 @@ export function UserProfileDialog({ username, open, onOpenChange }: UserProfileD
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const [activeTab, setActiveTab] = useState<'posts' | 'chats'>('posts');
 
   // Fetch user info
   const { data: profileUser, isLoading: loadingUser } = useQuery<User>({
@@ -115,24 +116,58 @@ export function UserProfileDialog({ username, open, onOpenChange }: UserProfileD
 
             <Separator className="my-4" />
 
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold">Posts</h3>
-              {loadingPosts ? (
-                <div className="flex items-center justify-center p-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : userPosts.length > 0 ? (
-                <div className="space-y-4">
-                  {userPosts.map((post) => (
-                    <PostCard key={post.id} post={post} />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  No posts yet
-                </p>
-              )}
+            <div className="flex gap-4 mb-4">
+              <Button
+                variant={activeTab === 'posts' ? "default" : "outline"}
+                onClick={() => setActiveTab('posts')}
+                className="flex-1"
+              >
+                Posts
+              </Button>
+              <Button
+                variant={activeTab === 'chats' ? "default" : "outline"}
+                onClick={() => setActiveTab('chats')}
+                className="flex-1"
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                Chat History
+              </Button>
             </div>
+
+            {activeTab === 'posts' ? (
+              <div className="space-y-6">
+                {loadingPosts ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : userPosts.length > 0 ? (
+                  <div className="space-y-4">
+                    {userPosts.map((post) => (
+                      <PostCard key={post.id} post={post} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    No posts yet
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-center p-4">
+                <Button
+                  onClick={() => {
+                    handleStartChat();
+                  }}
+                  className="w-full"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  View Chat History
+                </Button>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Click to view your conversation history with {profileUser.fullname}
+                </p>
+              </div>
+            )}
           </ScrollArea>
         ) : (
           <div className="text-center text-muted-foreground p-8">
