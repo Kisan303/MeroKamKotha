@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { type Chat, type User } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-import { Loader2, MessageSquare, MoreVertical, Trash2, Ban, CheckCheck } from "lucide-react";
+import { Loader2, MessageSquare, MoreVertical, Trash2, Ban } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   DropdownMenu,
@@ -50,9 +50,6 @@ export function ChatList({ onSelectChat, selectedChatId }: {
 
   useEffect(() => {
     if (!currentUser) return;
-
-    // Emit online status when component mounts
-    socket.emit("user-online", currentUser.id);
 
     // Listen for user status changes
     const handleStatusChange = (data: { userId: number; status: 'online' | 'offline' }) => {
@@ -138,7 +135,7 @@ export function ChatList({ onSelectChat, selectedChatId }: {
           </div>
         ) : (
           chats.map((chat) => {
-            const otherParticipant = chat.participants.find(p => p.id !== currentUser?.id);
+            const otherParticipant = chat.participants?.find(p => p.id !== currentUser?.id);
             if (!otherParticipant) return null;
 
             const isOnline = onlineUsers.has(otherParticipant.id);

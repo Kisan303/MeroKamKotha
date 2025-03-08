@@ -1,18 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Chat, User } from "@shared/schema";
 import { ChatList } from "@/components/chat/chat-list";
 import { ChatMessages } from "@/components/chat/chat-messages";
 import { ChatInput } from "@/components/chat/chat-input";
 import { ChatHeader } from "@/components/chat/chat-header";
+import { useAuth } from "@/hooks/use-auth";
+import { socket } from "@/lib/socket";
 
 export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [showMobileList, setShowMobileList] = useState(true);
+  const { user: currentUser } = useAuth();
 
   // Find the other participant in the selected chat
   const chatParticipant = selectedChat?.participants?.find(
-    (p: User) => p.id !== selectedChat.userId
+    (p: User) => p.id !== currentUser?.id
   );
+
+  // Handle current user's online status
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Emit online status when component mounts
+    socket.emit("user-online", currentUser.id);
+
+    // Handle cleanup on unmount
+    return () => {
+      socket.disconnect();
+    };
+  }, [currentUser]);
 
   return (
     <div className="flex h-screen bg-background">
