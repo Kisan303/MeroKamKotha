@@ -116,6 +116,12 @@ export function RegisterForm() {
         description: error.message,
         variant: "destructive",
       });
+
+      // If username exists error, go back to registration form
+      if (error.message.includes("Username already exists")) {
+        setIsVerifying(false);
+        setFormData(null);
+      }
     } finally {
       setIsLoading(false);
     }

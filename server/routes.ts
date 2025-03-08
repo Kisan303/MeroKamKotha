@@ -651,10 +651,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // New endpoint to register user after phone verification
   app.post("/api/auth/register-verified", async (req, res) => {
     try {
       const { phoneNumber, username, password, fullname } = req.body;
+
+      // Check if username already exists
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .where(sql`${users.phoneNumber} != ${phoneNumber}`); // Exclude current phone number
+
+      if (existingUser.length > 0) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
 
       // Update the existing user record with the registration data
       const [updatedUser] = await db
