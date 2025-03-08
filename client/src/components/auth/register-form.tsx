@@ -31,6 +31,7 @@ export function RegisterForm() {
 
   const requestOtp = async (data: InsertUser) => {
     try {
+      console.log("Requesting OTP for:", data.phoneNumber);
       const res = await fetch("/api/auth/request-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,6 +64,8 @@ export function RegisterForm() {
         throw new Error("Registration data not found");
       }
 
+      console.log("Verifying OTP:", code, "for phone:", formData.phoneNumber);
+
       // Verify OTP
       const verifyRes = await fetch("/api/auth/verify-otp", {
         method: "POST",
@@ -78,12 +81,16 @@ export function RegisterForm() {
         throw new Error(errorData.error || "Invalid verification code");
       }
 
+      console.log("OTP verified, proceeding with registration");
+
       // If OTP is valid, register the user
-      await registerMutation.mutateAsync(formData);
+      const user = await registerMutation.mutateAsync(formData);
+      console.log("Registration successful:", user);
 
       // Redirect to profile page on success
       navigate("/profile");
     } catch (error: any) {
+      console.error("Registration error:", error);
       toast({
         title: "Error",
         description: error.message,
