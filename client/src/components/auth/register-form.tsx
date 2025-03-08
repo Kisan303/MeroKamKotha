@@ -105,25 +105,34 @@ export function RegisterForm() {
         description: "You have been successfully registered",
       });
 
-      // Login automatically
-      await registerMutation.mutateAsync(formData);
+      // Login the user and redirect
+      try {
+        await registerMutation.mutateAsync(formData);
+        navigate("/profile");
+      } catch (loginError: any) {
+        console.error("Auto-login failed:", loginError);
+        // Even if auto-login fails, still redirect to login page
+        navigate("/auth");
+      }
 
-      // Navigate to profile
-      navigate("/profile");
     } catch (error: any) {
       console.error("Registration error:", error);
+
+      if (error.message.includes("Invalid verification code")) {
+        toast({
+          title: "Invalid Code",
+          description: "The verification code you entered is incorrect. Please try again.",
+          variant: "destructive",
+        });
+        return; // Stay on verification screen
+      }
+
+      // For other errors, show error and go back to registration
       toast({
-        title: "Error",
+        title: "Registration failed",
         description: error.message,
         variant: "destructive",
       });
-
-      // If verification code is invalid, let user try again
-      if (error.message.includes("Invalid verification code")) {
-        return;
-      }
-
-      // For other errors, go back to registration form
       setIsVerifying(false);
       setFormData(null);
     } finally {
