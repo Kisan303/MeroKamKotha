@@ -531,6 +531,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     socket.on("user-online", (userId: number) => {
       onlineUsers.set(userId, socket.id);
+      // Broadcast initial online users to the newly connected client
+      socket.emit("initial-online-users", Array.from(onlineUsers.keys()));
+      // Broadcast this user's online status to others
       io.emit("user-status-change", { userId, status: "online" });
     });
 

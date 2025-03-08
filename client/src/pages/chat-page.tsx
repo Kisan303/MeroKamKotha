@@ -22,8 +22,18 @@ export default function ChatPage() {
   useEffect(() => {
     if (!currentUser) return;
 
+    // Reconnect socket if needed
+    if (!socket.connected) {
+      socket.connect();
+    }
+
     // Emit online status when component mounts
     socket.emit("user-online", currentUser.id);
+
+    // Handle initial online users
+    socket.on("initial-online-users", (users: number[]) => {
+      setOnlineUsers(new Set(users));
+    });
 
     // Listen for user status changes
     const handleStatusChange = (data: { userId: number; status: 'online' | 'offline' }) => {
@@ -43,7 +53,7 @@ export default function ChatPage() {
     // Handle cleanup on unmount
     return () => {
       socket.off("user-status-change", handleStatusChange);
-      socket.disconnect();
+      socket.off("initial-online-users");
     };
   }, [currentUser]);
 
