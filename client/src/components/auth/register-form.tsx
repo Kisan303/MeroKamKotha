@@ -99,13 +99,17 @@ export function RegisterForm() {
       const user = await registerRes.json();
       console.log("Registration successful:", user);
 
-      // Login automatically after registration
-      const { username, password } = formData;
-      await registerMutation.mutateAsync(formData);
-
       toast({
         title: "Registration successful",
         description: "You have been successfully registered",
+      });
+
+      // Login automatically after registration
+      await registerMutation.mutateAsync({
+        username: formData.username,
+        password: formData.password,
+        fullname: formData.fullname,
+        phoneNumber: formData.phoneNumber,
       });
 
       navigate("/profile");
