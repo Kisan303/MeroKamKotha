@@ -126,24 +126,24 @@ export function UserProfileDialog({ username, open, onOpenChange }: UserProfileD
                 </div>
               </div>
 
-              {/* Chat History Container */}
+              {/* Chat Messages Container - Only show for other users */}
               {currentUser?.id !== profileUser.id && (
-                <div className="col-span-2 p-4 rounded-lg border bg-card">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="col-span-2 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer" onClick={handleStartChat}>
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-muted-foreground" />
-                      <span className="font-medium">Chat History</span>
+                      <MessageSquare className="h-5 w-5 text-primary" />
+                      <span className="font-medium text-lg">Chat Messages</span>
                     </div>
                     <Button
-                      onClick={handleStartChat}
+                      variant="secondary"
                       size="sm"
-                      variant="outline"
+                      className="font-semibold"
                     >
-                      Open Chat
+                      View History
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    View your conversation history with {profileUser.fullname}
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Click to view or start a conversation with {profileUser.fullname}
                   </p>
                 </div>
               )}
