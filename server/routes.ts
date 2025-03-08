@@ -574,6 +574,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { phoneNumber } = req.body;
 
+      console.log("Requesting OTP for:", phoneNumber);
+
       // Generate a 6-digit OTP
       const otp = randomInt(100000, 999999).toString();
 
@@ -583,9 +585,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         process.env.TWILIO_AUTH_TOKEN
       );
 
-      // Send OTP via SMS
+      // Send OTP via SMS with custom message
       await client.messages.create({
-        body: `Your verification code is: ${otp}`,
+        body: `Thank you for registering with Mero KamKotha developed by Kisan Rai. Here is your verification code: ${otp}`,
         to: phoneNumber,
         from: process.env.TWILIO_PHONE_NUMBER,
       });
@@ -623,6 +625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { phoneNumber, code } = verifyOtpSchema.parse(req.body);
 
+      // Find user with matching phone and code that hasn't expired
       const [user] = await db
         .select()
         .from(users)
@@ -659,8 +662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingUser = await db
         .select()
         .from(users)
-        .where(eq(users.username, username))
-        .where(sql`${users.phoneNumber} != ${phoneNumber}`); // Exclude current phone number
+        .where(eq(users.username, username));
 
       if (existingUser.length > 0) {
         return res.status(400).json({ error: "Username already exists" });

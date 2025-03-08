@@ -117,6 +117,11 @@ export function RegisterForm() {
         variant: "destructive",
       });
 
+      // If verification code is invalid, let user try again
+      if (error.message.includes("Invalid or expired verification code")) {
+        return;
+      }
+
       // If username exists error, go back to registration form
       if (error.message.includes("Username already exists")) {
         setIsVerifying(false);
