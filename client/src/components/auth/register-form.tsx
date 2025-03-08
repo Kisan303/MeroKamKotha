@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InsertUser, insertUserSchema, verifyOtpSchema } from "@shared/schema";
@@ -28,6 +29,10 @@ export function RegisterForm() {
       phoneNumber: "",
     },
   });
+
+  const onLoginSuccess = () => {
+    //This function is not used.
+  };
 
   const requestOtp = async (data: InsertUser) => {
     try {
@@ -66,7 +71,7 @@ export function RegisterForm() {
 
       console.log("Verifying OTP:", code, "for phone:", formData.phoneNumber);
 
-      // Verify OTP
+      // First verify the OTP
       const verifyRes = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,9 +88,15 @@ export function RegisterForm() {
 
       console.log("OTP verified, proceeding with registration");
 
-      // If OTP is valid, register the user
+      // If OTP is valid, register the user with the stored form data
       const user = await registerMutation.mutateAsync(formData);
       console.log("Registration successful:", user);
+
+      // Show success message
+      toast({
+        title: "Registration successful",
+        description: "You have been successfully registered",
+      });
 
       // Redirect to profile page on success
       navigate("/profile");

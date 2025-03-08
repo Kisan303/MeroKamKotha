@@ -645,7 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(users.id, user.id));
 
       res.sendStatus(200);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error verifying OTP:", error);
       res.status(500).json({ error: "Failed to verify code" });
     }
