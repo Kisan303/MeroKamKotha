@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, MessageSquare, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Post, User } from "@shared/schema";
+import { Post, User, Chat } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { PostCard } from "../posts/post-card";
 import { useLocation } from "wouter";
@@ -22,27 +22,16 @@ export function UserProfileDialog({ username, open, onOpenChange }: UserProfileD
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = useState<'posts' | 'chats'>('posts');
 
   // Fetch user info
   const { data: profileUser, isLoading: loadingUser } = useQuery<User>({
     queryKey: ["/api/users", username],
-    queryFn: async () => {
-      const res = await fetch(`/api/users/${username}`);
-      if (!res.ok) throw new Error("Failed to fetch user");
-      return res.json();
-    },
     enabled: open,
   });
 
   // Fetch user's posts
   const { data: userPosts = [], isLoading: loadingPosts } = useQuery<Post[]>({
     queryKey: ["/api/users", username, "posts"],
-    queryFn: async () => {
-      const res = await fetch(`/api/users/${username}/posts`);
-      if (!res.ok) throw new Error("Failed to fetch posts");
-      return res.json();
-    },
     enabled: open,
   });
 
@@ -116,69 +105,68 @@ export function UserProfileDialog({ username, open, onOpenChange }: UserProfileD
 
             <Separator className="my-4" />
 
-            <div className="flex gap-4 mb-4">
-              <Button
-                variant={activeTab === 'posts' ? "default" : "outline"}
-                onClick={() => setActiveTab('posts')}
-                className="flex-1"
-              >
-                Posts
-              </Button>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Room Posts Container */}
+              <div className="p-4 rounded-lg border bg-card">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="text-3xl font-bold">{userPosts.filter(p => p.type === 'room').length}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Room Posts
+                  </div>
+                </div>
+              </div>
+
+              {/* Job Posts Container */}
+              <div className="p-4 rounded-lg border bg-card">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="text-3xl font-bold">{userPosts.filter(p => p.type === 'job').length}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Job Posts
+                  </div>
+                </div>
+              </div>
+
+              {/* Chat History Container */}
               {currentUser?.id !== profileUser.id && (
-                <Button
-                  variant={activeTab === 'chats' ? "default" : "outline"}
-                  onClick={() => setActiveTab('chats')}
-                  className="flex-1"
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Chat History
-                </Button>
+                <div className="col-span-2 p-4 rounded-lg border bg-card">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-medium">Chat History</span>
+                    </div>
+                    <Button
+                      onClick={handleStartChat}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Open Chat
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    View your conversation history with {profileUser.fullname}
+                  </p>
+                </div>
               )}
             </div>
 
-            {activeTab === 'posts' ? (
-              <div className="space-y-6">
-                {loadingPosts ? (
-                  <div className="flex items-center justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : userPosts.length > 0 ? (
-                  <div className="space-y-4">
-                    {userPosts.map((post) => (
-                      <PostCard key={post.id} post={post} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">
-                    No posts yet
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="p-4 space-y-4">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium mb-2">Chat with {profileUser.fullname}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    View your conversation history or start a new chat
-                  </p>
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold">Recent Posts</h3>
+              {loadingPosts ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
-                <Button
-                  onClick={handleStartChat}
-                  className="w-full h-12 text-lg"
-                  size="lg"
-                >
-                  <MessageSquare className="h-5 w-5 mr-2" />
-                  {createChatMutation.isPending ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    "Open Chat"
-                  )}
-                </Button>
-                <p className="text-sm text-center text-muted-foreground mt-2">
-                  You'll be redirected to your conversation with {profileUser.fullname}
+              ) : userPosts.length > 0 ? (
+                <div className="space-y-4">
+                  {userPosts.map((post) => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  No posts yet
                 </p>
-              </div>
-            )}
+              )}
+            </div>
           </ScrollArea>
         ) : (
           <div className="text-center text-muted-foreground p-8">
