@@ -28,7 +28,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DialogTitle, DialogClose } from "@/components/ui/dialog";
-import { motion } from "framer-motion";
 
 export function PostForm({ initialData, onSuccess }: {
   initialData?: InsertPost & { id?: number };
@@ -38,6 +37,7 @@ export function PostForm({ initialData, onSuccess }: {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>(initialData?.images || []);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
 
   const form = useForm<InsertPost>({
     resolver: zodResolver(insertPostSchema),
@@ -56,6 +56,7 @@ export function PostForm({ initialData, onSuccess }: {
   useEffect(() => {
     if (postType === "job") {
       setPreviews([]);
+      setFiles([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -64,10 +65,10 @@ export function PostForm({ initialData, onSuccess }: {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log("Image input change triggered");
-    const files = e.target.files;
-    if (!files) return;
+    const selectedFiles = e.target.files;
+    if (!selectedFiles) return;
 
-    if (files.length > 5) {
+    if (selectedFiles.length > 5) {
       toast({
         title: "Error",
         description: "Maximum 5 images allowed",
@@ -76,7 +77,10 @@ export function PostForm({ initialData, onSuccess }: {
       return;
     }
 
-    Array.from(files).forEach((file) => {
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+
+    Array.from(selectedFiles).forEach((file) => {
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "Error",
@@ -89,60 +93,65 @@ export function PostForm({ initialData, onSuccess }: {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
-          setPreviews((prev) => {
-            if (prev.includes(e.target!.result as string)) {
-              return prev;
-            }
-            if (prev.length >= 5) {
-              toast({
-                title: "Error",
-                description: "Maximum 5 images allowed",
-                variant: "destructive",
-              });
-              return prev;
-            }
-            return [...prev, e.target!.result as string];
-          });
+          newPreviews.push(e.target.result as string);
+          if (newPreviews.length === selectedFiles.length) {
+            setPreviews(newPreviews);
+          }
         }
       };
       reader.readAsDataURL(file);
+      newFiles.push(file);
     });
+
+    setFiles(newFiles);
   };
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertPost) => {
       console.log("Starting mutation with data:", data);
 
-      // For room posts, validate images
-      if (data.type === "room" && previews.length === 0) {
-        throw new Error("At least one image is required for room posts");
+      if (data.type === "room") {
+        if (files.length === 0) {
+          throw new Error("At least one image is required for room posts");
+        }
+
+        // Create FormData to send files
+        const formData = new FormData();
+        files.forEach((file) => {
+          formData.append('images', file);
+        });
+
+        // Add other post data
+        formData.append('type', data.type);
+        formData.append('title', data.title);
+        formData.append('description', data.description);
+        formData.append('price', data.price?.toString() || '');
+        formData.append('location', data.location);
+
+        console.log("Sending post data with images");
+        const res = await fetch('/api/posts', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Server error response:", errorText);
+          throw new Error(errorText || "Failed to create post");
+        }
+
+        return await res.json();
+      } else {
+        // For job posts (no images)
+        const res = await apiRequest("POST", "/api/posts", data);
+        if (!res.ok) {
+          throw new Error("Failed to create post");
+        }
+        return await res.json();
       }
-
-      // Validate price for room posts
-      if (data.type === "room" && (data.price === null || data.price <= 0)) {
-        throw new Error("Please enter a valid price for room posts");
-      }
-
-      const postData = {
-        ...data,
-        images: data.type === "room" ? previews : [],
-      };
-
-      console.log("Sending post data to server:", postData);
-      const res = await apiRequest("POST", "/api/posts", postData);
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Server error response:", errorText);
-        throw new Error(errorText || "Failed to create post");
-      }
-
-      const result = await res.json();
-      console.log("Post created successfully:", result);
-      return result;
     },
     onSuccess: () => {
-      console.log("Mutation succeeded, cleaning up form");
+      console.log("Post created successfully");
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       toast({
         title: "Success",
@@ -150,6 +159,7 @@ export function PostForm({ initialData, onSuccess }: {
       });
       form.reset();
       setPreviews([]);
+      setFiles([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -168,7 +178,6 @@ export function PostForm({ initialData, onSuccess }: {
 
   const onSubmit = async (data: InsertPost) => {
     console.log("Form submission triggered with data:", data);
-    console.log("Form validation state:", form.formState);
 
     try {
       // Validate required fields for room posts
@@ -205,7 +214,7 @@ export function PostForm({ initialData, onSuccess }: {
           });
           return;
         }
-        if (previews.length === 0) {
+        if (files.length === 0) {
           toast({
             title: "Error",
             description: "At least one image is required for room posts",
@@ -215,7 +224,6 @@ export function PostForm({ initialData, onSuccess }: {
         }
       }
 
-      console.log("Calling mutation with validated data...");
       await createMutation.mutateAsync(data);
     } catch (error) {
       console.error("Submit error:", error);
@@ -233,7 +241,7 @@ export function PostForm({ initialData, onSuccess }: {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              console.log("Raw form submit event triggered");
+              console.log("Form submit triggered");
               form.handleSubmit(onSubmit)(e);
             }}
             className="space-y-6"
@@ -412,6 +420,7 @@ export function PostForm({ initialData, onSuccess }: {
                                   className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-all duration-200"
                                   onClick={() => {
                                     setPreviews(previews.filter((_, i) => i !== index));
+                                    setFiles(files.filter((_, i) => i !== index));
                                   }}
                                 >
                                   <X className="h-4 w-4" />

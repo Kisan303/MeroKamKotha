@@ -1,9 +1,45 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertPostSchema, insertCommentSchema } from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Configure multer for storing files
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const imageStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: imageStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    const filetypes = /jpeg|jpg|png/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error("Only .png, .jpg and .jpeg format allowed!"));
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -36,6 +72,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Serve uploaded files statically
+  app.use('/uploads', express.static(uploadDir));
+
   // Middleware to check authentication
   const requireAuth = (req: any, res: any, next: any) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -54,29 +93,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(postsWithUsernames);
   });
 
-  app.post("/api/posts", requireAuth, async (req, res) => {
+  app.post("/api/posts", requireAuth, upload.array('images', 5), async (req, res) => {
     try {
-      console.log("Creating post with data type:", req.body.type);
-      console.log("Image data present:", !!req.body.images);
+      console.log("Creating post with data:", req.body);
+      console.log("Files received:", req.files);
 
-      // For room posts, validate images
-      if (req.body.type === "room" && (!req.body.images || !Array.isArray(req.body.images) || req.body.images.length === 0)) {
-        console.log("Image validation failed for room post");
-        return res.status(400).json({ error: "At least one image is required for room posts" });
+      const files = req.files as Express.Multer.File[];
+      let imageUrls: string[] = [];
+
+      if (req.body.type === "room") {
+        if (!files || files.length === 0) {
+          return res.status(400).json({ error: "At least one image is required for room posts" });
+        }
+        // Convert uploaded files to URLs
+        imageUrls = files.map(file => `/uploads/${file.filename}`);
       }
 
       const data = {
         ...req.body,
         price: req.body.price ? Number(req.body.price) : null,
+        images: imageUrls
       };
 
-      console.log("Data before parsing:", data);
+      console.log("Parsed data:", data);
 
       const parsed = insertPostSchema.parse(data);
-      console.log("Parsed data:", parsed);
-
       const post = await storage.createPost(req.user!.id, parsed);
-      console.log("Post created:", post);
 
       const user = await storage.getUser(post.userId);
       const postWithUser = { ...post, username: user?.username };
@@ -87,6 +129,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(postWithUser);
     } catch (error) {
       console.error("Error creating post:", error);
+      // Clean up uploaded files if there's an error
+      if (req.files) {
+        const files = req.files as Express.Multer.File[];
+        files.forEach(file => {
+          fs.unlink(file.path, (err) => {
+            if (err) console.error("Error deleting file:", err);
+          });
+        });
+      }
       res.status(400).json({ error: error.message || "Failed to create post" });
     }
   });

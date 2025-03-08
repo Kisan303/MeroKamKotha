@@ -46,33 +46,25 @@ export const bookmarks = pgTable("bookmarks", {
 });
 
 export const insertUserSchema = createInsertSchema(users);
-export const insertPostSchema = createInsertSchema(posts)
-  .omit({ 
-    id: true,
-    userId: true,
-    createdAt: true,
-    editedAt: true
-  })
-  .extend({
-    title: z.string().min(1, "Title is required"),
-    description: z.string().min(1, "Description is required"),
-    location: z.string().min(1, "Location is required"),
-    type: z.enum(["room", "job"]),
-    price: z.number().nullable(),
-    images: z.array(z.string()).optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.type === "room") {
-        return (data.images && data.images.length > 0 && data.price !== null);
-      }
-      return true;
-    },
-    {
-      message: "For room posts, images and price are required",
-      path: ["images"],
-    }
-  );
+
+// Updated post schema to handle file uploads
+export const insertPostSchema = z.object({
+  type: z.enum(["room", "job"]),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  location: z.string().min(1, "Location is required"),
+  price: z.number().nullable(),
+  images: z.array(z.string()).optional(),
+}).refine((data) => {
+  if (data.type === "room") {
+    return data.price !== null && data.price > 0;
+  }
+  return true;
+}, {
+  message: "Price is required for room posts and must be greater than 0",
+  path: ["price"],
+});
+
 export const insertCommentSchema = createInsertSchema(comments).omit({ 
   id: true,
   userId: true,
